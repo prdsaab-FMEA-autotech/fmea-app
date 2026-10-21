@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FMEA Auto-Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --line:#d9dde3; --text:#1c2430; --muted:#6b7686;
+  --primary:#2563eb; --primary-d:#1d4ed8;
+  --red-bg:#fde4e4; --red:#b42318; --yel-bg:#fff3cd; --yel:#8a5a00; --grn-bg:#dcf5e3; --grn:#146c35;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+h1,h2,h3{margin:.2em 0}
+a{color:var(--primary);text-decoration:none}
+.spacer{flex:1}
+.muted{color:var(--muted)} .small{font-size:12px}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:#111827;color:#fff;position:sticky;top:0;z-index:20}
+.topbar .brand{color:#fff;font-weight:700;font-size:16px}
+.topbar .muted{color:#aab3c2}
+.main{padding:18px 20px;max-width:1800px;margin:0 auto}
+.page-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.btn{font:inherit;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f0f2f5} .btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff} .btn.primary:hover{background:var(--primary-d)}
+.btn.danger{color:var(--red);border-color:#f0b4ae} .btn.ghost{background:transparent;border-color:transparent}
+.topbar .btn.ghost{color:#fff} .topbar .btn.ghost:hover{background:#243042}
+.btn.sm{padding:2px 7px;font-size:12px}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{
+  font:inherit;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:#fff;color:var(--text);width:100%}
+textarea{resize:vertical}
+label.f{display:block;margin:10px 0 2px;font-weight:600;font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin-top:2px}
+.error{background:var(--red-bg);color:var(--red);padding:8px 10px;border-radius:7px;margin-top:10px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.badge{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid transparent}
+.badge.blue{background:#dbeafe;color:#1e40af} .badge.purple{background:#ede9fe;color:#5b21b6}
+.badge.gray{background:#e5e7eb;color:#374151} .badge.green{background:var(--grn-bg);color:var(--grn)}
+.badge.yellow{background:var(--yel-bg);color:var(--yel)} .badge.red{background:var(--red-bg);color:var(--red)}
+.row-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+table.plain{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+table.plain th,table.plain td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.plain th{background:#f0f2f5;font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:var(--muted)}
+
+/* login */
+.login{max-width:380px;margin:8vh auto}
+.login .btn{width:100%;margin-top:10px}
+
+/* banners */
+.banner{padding:9px 12px;border-radius:8px;margin:8px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.warn{background:var(--yel-bg);color:var(--yel)} .banner.info{background:#dbeafe;color:#1e3a8a}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.step{padding:3px 10px;border-radius:99px;background:#e5e7eb;color:#4b5563;font-size:12px;font-weight:600}
+.step.done{background:var(--grn-bg);color:var(--grn)}
+
+/* doc */
+.doc-head{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin:12px 0 10px}
+.tab{font:inherit;background:none;border:none;padding:8px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);font-weight:600}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.toolbar .search{width:200px} .toolbar select{width:auto}
+.table-wrap{overflow:auto;max-height:calc(100vh - 290px);background:#fff;border:1px solid var(--line);border-radius:8px}
+table.fmea{border-collapse:separate;border-spacing:0;min-width:2000px;width:100%}
+table.fmea th{position:sticky;top:0;z-index:2;background:#eef1f5;font-size:12px;padding:7px 6px;border-bottom:2px solid var(--line);border-right:1px solid var(--line);text-align:left}
+table.fmea td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:3px;vertical-align:top}
+table.fmea td.num{text-align:center;color:var(--muted);width:36px;padding-top:8px}
+table.fmea textarea{border:1px solid transparent;background:transparent;padding:4px 5px;min-height:40px;overflow:hidden;font-size:13px;min-width:140px}
+table.fmea textarea:hover{border-color:var(--line)} table.fmea textarea:focus{border-color:var(--primary);background:#fff;outline:none}
+table.fmea select.sod{width:58px;padding:5px 3px;text-align:center;font-weight:600}
+table.fmea select.sel{width:112px;padding:5px 4px} table.fmea input[type=date]{width:135px;padding:5px}
+td.risk{text-align:center;vertical-align:middle;min-width:64px;font-size:15px}
+.sbadge{font-size:10px;color:var(--red);font-weight:700}
+tr.row-high td{background:#fff6f6} tr.row-med td{background:#fffcf0}
+tr.row-high td.risk{background:var(--red-bg);color:var(--red)} tr.row-med td.risk{background:var(--yel-bg);color:var(--yel)}
+tr.row-low td.risk{background:var(--grn-bg);color:var(--grn)}
+tr.dragging{opacity:.4} tr.busy{opacity:.5;pointer-events:none}
+td.tools{white-space:nowrap;min-width:150px;padding-top:6px}
+.src{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-right:4px}
+.src.ai{background:#ede9fe;color:#5b21b6} .src.manual{background:#e5e7eb;color:#374151}
+.handle{cursor:grab;padding:0 4px;color:var(--muted);user-select:none} .handle.disabled{cursor:not-allowed;opacity:.35}
+.pv{display:none;white-space:pre-wrap;font-size:12px;padding:2px 4px}
+.print-head{display:none}
+
+/* dashboard */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:26px} .stat.red b{color:var(--red)} .stat.yel b{color:var(--yel)} .stat.grn b{color:var(--grn)}
+.bar{display:flex;height:18px;border-radius:9px;overflow:hidden;background:#e5e7eb;margin:6px 0 14px}
+.bar span{display:block;height:100%} .bar .h{background:#e5645a} .bar .m{background:#f2b632} .bar .l{background:#4cb26e}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px}
+.late{color:var(--red);font-weight:700}
+
+/* modal / toast */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:flex-start;justify-content:center;padding:5vh 12px;z-index:50;overflow:auto}
+.modal{background:#fff;border-radius:12px;padding:16px 18px;width:100%;max-width:560px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal.wide{max-width:980px}
+.modal-head{display:flex;align-items:center;margin-bottom:6px} .modal-head h3{flex:1}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;max-height:60vh;overflow:auto}
+.crit td{padding:3px 6px;vertical-align:top;border-bottom:1px solid var(--line)} .crit td:first-child{font-weight:700;width:28px}
+#toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:100;max-width:420px}
+.toast{padding:10px 14px;border-radius:8px;background:#1f2937;color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast.ok{background:#146c35} .toast.error{background:#b42318}
+.diff-old{background:var(--red-bg);padding:1px 4px;border-radius:4px;text-decoration:line-through}
+.diff-new{background:var(--grn-bg);padding:1px 4px;border-radius:4px}
+.cmp{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px} .cmp select{width:auto}
+
+@media (max-width:760px){.two-col{grid-template-columns:1fr}.main{padding:12px}}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
+  .noprint,.topbar,.toolbar,.tabs,.banner,.steps,.noprint-col,#toast,.badges.hideprint{display:none !important}
+  .print-head{display:block;margin-bottom:8px} .print-head table{font-size:11px;border-collapse:collapse}
+  .print-head td{padding:1px 14px 1px 0}
+  .table-wrap{max-height:none;overflow:visible;border:none}
+  table.fmea{min-width:0;font-size:9px}
+  table.fmea th{position:static}
+  table.fmea textarea,table.fmea select.sod,table.fmea select.sel,table.fmea input[type=date]{display:none}
+  .pv{display:block}
+  .main{padding:0;max-width:none}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<noscript>ต้องเปิดใช้งาน JavaScript</noscript>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   FMEA Auto-Generator — single-file web app
+   - ใช้ anon key เท่านั้น (ปลอดภัยเมื่อเปิด RLS ตาม 01_schema.sql)
+   - ทุกข้อความที่ผู้ใช้กรอกถูกใส่ผ่าน textContent/value (กัน XSS) ไม่ใช้ innerHTML
+   ===================================================================== */
+
+// ⚙️ ตั้งค่า 2 บรรทัดนี้ (Supabase → Project Settings → API)
+const CONFIG = {
+  SUPABASE_URL: 'https://hjrmuhmplzvxocivfxku.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqcm11aG1wbHp2eG9jaXZmeGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxODY5NzgsImV4cCI6MjEwNzc2Mjk3OH0.kiL8BAZnk3V_ovzlRVH98DU6xaMQ0jITTg-fAeY8IcE'
+};
+
+const $app = document.getElementById('app');
+let db = null;
+
+const S = {
+  user: null, standards: [], criteria: {},
+  project: null, doc: null, standard: null,
+  items: [], revisions: [], viewRev: null, viewItems: [],
+  tab: 'table', saving: 0, busy: false,
+  filters: { q: '', risk: 'all', status: 'all', sort: 'manual' },
+  lastAi: { process_step: '', function_desc: '', requirement: '', context: '', count: 5, language: 'th' }
+};
+
+const STATUS_LABEL = { draft: 'Draft', reviewed: 'Reviewed', approved: 'Approved' };
+const ACTION_LABEL = { open: 'Open', in_progress: 'In progress', done: 'Done' };
+const DOC_STATUS_LABEL = { draft: 'Draft', in_review: 'In review', approved: 'Approved' };
+const LEVEL_RANK = { high: 3, med: 2, low: 1, none: 0 };
+const SEARCH_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause',
+  'prevention_control', 'detection_control', 'recommended_action'];
+const DIFF_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'severity', 'cause',
+  'occurrence', 'prevention_control', 'detection_control', 'detection', 'recommended_action', 'action_owner',
+  'target_date', 'action_status', 'status'];
+const FIELD_LABEL = {
+  process_step: 'Process step', work_element: 'Work element', function_desc: 'Function', failure_mode: 'Failure Mode',
+  effect: 'Effect', severity: 'S', cause: 'Cause', occurrence: 'O', prevention_control: 'Prevention',
+  detection_control: 'Detection ctrl', detection: 'D', recommended_action: 'Action', action_owner: 'Owner',
+  target_date: 'Target date', action_status: 'Action status', status: 'Review status'
+};
+const AI_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'severity', 'cause',
+  'occurrence', 'prevention_control', 'detection_control', 'detection', 'recommended_action'];
+
+/* ---------- DOM helper (ปลอดภัยต่อ XSS: ข้อความทั้งหมดเป็น text node) ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  let val;
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'value') val = v;
+      else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (v === true) el.setAttribute(k, '');
+      else el.setAttribute(k, String(v));
+    }
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  if (val !== undefined) el.value = val;
+  return el;
+}
+const badge = (text, color) => h('span', { class: 'badge ' + color }, text);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmtDate = (ts) => new Date(ts).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+function unwrap(res) {
+  if (res && res.error) throw new Error(res.error.message || String(res.error));
+  return res ? res.data : null;
+}
+function toast(msg, type) {
+  const t = h('div', { class: 'toast ' + (type || '') }, msg);
+  document.getElementById('toast').append(t);
+  setTimeout(() => t.remove(), type === 'error' ? 8000 : 3500);
+}
+function openModal(title, content, opts) {
+  const overlay = h('div', { class: 'overlay' });
+  const close = () => overlay.remove();
+  const box = h('div', { class: 'modal' + (opts && opts.wide ? ' wide' : '') },
+    h('div', { class: 'modal-head' }, h('h3', null, title),
+      h('button', { class: 'btn ghost', 'aria-label': 'ปิด', onclick: close }, '✕')),
+    content);
+  overlay.append(box);
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
+  document.body.append(overlay);
+  return { close, box };
+}
+function field(label, input, hint) {
+  return h('div', null, h('label', { class: 'f' }, label), input, hint ? h('div', { class: 'hint' }, hint) : null);
+}
+const mount = (node) => $app.replaceChildren(node);
+
+function shell(...content) {
+  return h('div', null,
+    h('header', { class: 'topbar noprint' },
+      h('a', { href: '#/', class: 'brand' }, '🛠️ FMEA Auto-Generator'),
+      h('div', { class: 'spacer' }),
+      S.user ? h('span', { class: 'muted small' }, S.user.email) : null,
+      S.user ? h('button', { class: 'btn ghost', onclick: signOut }, 'ออกจากระบบ') : null),
+    h('main', { class: 'main' }, ...content));
+}
+const loadingView = () => h('p', { class: 'muted' }, 'กำลังโหลด…');
+function showFatal(e) {
+  console.error(e);
+  mount(shell(h('div', { class: 'card' }, h('h3', null, 'เกิดข้อผิดพลาด'),
+    h('div', { class: 'error' }, e.message || String(e)),
+    h('div', { class: 'row-actions' }, h('button', { class: 'btn', onclick: route }, 'ลองใหม่'),
+      h('a', { class: 'btn', href: '#/' }, 'กลับหน้าแรก')))));
+}
+
+/* =====================================================================
+   Auth
+   ===================================================================== */
+function renderSetup() {
+  mount(h('div', { class: 'login' }, h('div', { class: 'card' },
+    h('h2', null, 'ตั้งค่า Supabase ก่อนใช้งาน'),
+    h('p', null, 'เปิดไฟล์ index.html แล้วแก้ค่า CONFIG ด้านบนของ <script>:'),
+    h('ul', null, h('li', null, 'SUPABASE_URL'), h('li', null, 'SUPABASE_ANON_KEY (anon public เท่านั้น ห้ามใช้ service_role)')),
+    h('p', { class: 'muted small' }, 'ดูขั้นตอนใน README.md'))));
+}
+function renderLogin() {
+  const email = h('input', { type: 'email', autocomplete: 'email', required: true });
+  const pass = h('input', { type: 'password', autocomplete: 'current-password', minlength: 6, required: true });
+  const msg = h('div', { class: 'error', hidden: true });
+  const fail = (m) => { msg.textContent = m; msg.hidden = false; };
+  const form = h('form', null, field('อีเมล', email), field('รหัสผ่าน (อย่างน้อย 6 ตัว)', pass), msg,
+    h('button', { class: 'btn primary', type: 'submit' }, 'เข้าสู่ระบบ'),
+    h('button', { class: 'btn', type: 'button', onclick: async () => {
+      msg.hidden = true;
+      if (!email.value.trim() || pass.value.length < 6) return fail('กรอกอีเมลและรหัสผ่านอย่างน้อย 6 ตัว');
+      const { data, error } = await db.auth.signUp({ email: email.value.trim(), password: pass.value });
+      if (error) return fail(error.message);
+      if (!data.session) toast('สมัครแล้ว — กรุณายืนยันอีเมล แล้วเข้าสู่ระบบ', 'ok');
+    } }, 'สมัครสมาชิกใหม่'));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault(); msg.hidden = true;
+    const { error } = await db.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+    if (error) fail('เข้าสู่ระบบไม่สำเร็จ: ' + error.message);
+  });
+  mount(h('div', { class: 'login' }, h('div', { class: 'card' }, h('h2', null, '🛠️ FMEA Auto-Generator'),
+    h('p', { class: 'muted' }, 'เข้าสู่ระบบเพื่อจัดการ FMEA ของคุณ'), form)));
+}
+async function signOut() { await db.auth.signOut(); }
+
+/* =====================================================================
+   Routing
+   ===================================================================== */
+async function route() {
+  if (!S.user) return renderLogin();
+  const m = location.hash.match(/^#\/(p|d)\/([0-9a-f-]{36})$/i);
+  if (!m) return showProjects();
+  return m[1] === 'p' ? showProject(m[2]) : showDoc(m[2]);
+}
+async function ensureRef() {
+  if (S.standards.length) return;
+  S.standards = unwrap(await db.from('standards').select('*').eq('is_active', true).order('sort_order'));
+  if (!S.standards.length) throw new Error('ยังไม่มีข้อมูลมาตรฐานใน DB — กรุณารัน 02_seed.sql');
+}
+async function ensureCriteria(code) {
+  if (S.criteria[code]) return;
+  const rows = unwrap(await db.from('rating_criteria').select('type,score,description').eq('standard_version', code));
+  const o = { S: {}, O: {}, D: {} };
+  rows.forEach((r) => { o[r.type][r.score] = r.description; });
+  S.criteria[code] = o;
+}
+function critDesc(type, score) {
+  const c = S.criteria[S.doc.standard_version];
+  if (score === null || score === undefined || score === '') return type + ': ยังไม่ได้ให้คะแนน';
+  return c && c[type][score] ? `${type}=${score}: ${c[type][score]}` : `${type}=${score}`;
+}
+
+/* =====================================================================
+   Projects
+   ===================================================================== */
+async function showProjects() {
+  mount(shell(loadingView()));
+  try {
+    await ensureRef();
+    const projects = unwrap(await db.from('projects').select('*').order('created_at', { ascending: false }));
+    mount(shell(
+      h('div', { class: 'page-head' }, h('h2', null, 'Projects'), h('div', { class: 'spacer' }),
+        projects.some(isDemo)
+          ? h('button', { class: 'btn danger', onclick: deleteDemo }, '🗑 ลบข้อมูล Demo')
+          : h('button', { class: 'btn', onclick: createDemo }, '🧪 สร้างข้อมูล Demo'),
+        h('button', { class: 'btn primary', onclick: () => projectModal(null) }, '➕ สร้าง Project')),
+      projects.length
+        ? h('div', { class: 'grid' }, projects.map(projectCard))
+        : h('div', { class: 'card empty' }, 'ยังไม่มี Project — กด "สร้าง Project" เพื่อเริ่มต้น')));
+  } catch (e) { showFatal(e); }
+}
+function projectCard(p) {
+  return h('div', { class: 'card' },
+    h('h3', null, p.name),
+    h('div', { class: 'badges' }, badge(p.fmea_type, 'blue'), p.part_no ? badge('Part ' + p.part_no, 'gray') : null, isDemo(p) ? badge('DEMO', 'yellow') : null),
+    p.process_name ? h('div', { class: 'small' }, 'Process: ' + p.process_name) : null,
+    p.responsible ? h('div', { class: 'small muted' }, 'ผู้รับผิดชอบ: ' + p.responsible) : null,
+    p.team ? h('div', { class: 'small muted' }, 'ทีม: ' + p.team) : null,
+    h('div', { class: 'row-actions' },
+      h('a', { class: 'btn primary', href: '#/p/' + p.id }, 'เปิด'),
+      h('button', { class: 'btn', onclick: () => projectModal(p) }, 'แก้ไข'),
+      h('button', { class: 'btn danger', onclick: () => deleteProject(p) }, 'ลบ')));
+}
+function projectModal(p) {
+  const f = {
+    name: h('input', { type: 'text', maxlength: 200, value: p ? p.name : '' }),
+    part_no: h('input', { type: 'text', maxlength: 100, value: p ? p.part_no || '' : '' }),
+    fmea_type: h('select', { value: p ? p.fmea_type : 'PFMEA' }, h('option', { value: 'PFMEA' }, 'PFMEA (Process)'), h('option', { value: 'DFMEA' }, 'DFMEA (Design)')),
+    process_name: h('input', { type: 'text', maxlength: 200, value: p ? p.process_name || '' : '' }),
+    responsible: h('input', { type: 'text', maxlength: 200, value: p ? p.responsible || '' : '' }),
+    team: h('input', { type: 'text', maxlength: 500, value: p ? p.team || '' : '' })
+  };
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const save = h('button', { class: 'btn primary' }, 'บันทึก');
+  save.addEventListener('click', async () => {
+    const row = {
+      name: f.name.value.trim(), part_no: f.part_no.value.trim() || null, fmea_type: f.fmea_type.value,
+      process_name: f.process_name.value.trim() || null, responsible: f.responsible.value.trim() || null,
+      team: f.team.value.trim() || null
+    };
+    if (!row.name) { err.textContent = 'กรุณาระบุชื่อ Project'; err.hidden = false; return; }
+    save.disabled = true;
+    try {
+      if (p) unwrap(await db.from('projects').update(row).eq('id', p.id));
+      else unwrap(await db.from('projects').insert(row));
+      m.close(); showProjects();
+    } catch (e) { err.textContent = e.message; err.hidden = false; save.disabled = false; }
+  });
+  m = openModal(p ? 'แก้ไข Project' : 'สร้าง Project',
+    h('div', null, field('ชื่อชิ้นงาน / Project *', f.name),
+      h('div', { class: 'two-col' }, field('Part no.', f.part_no), field('ประเภท FMEA', f.fmea_type)),
+      field('Process', f.process_name), field('ผู้รับผิดชอบ', f.responsible), field('ทีม', f.team), err,
+      h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), save)));
+}
+/*DEMO_START*/
+/* =====================================================================
+   ข้อมูล Demo — สร้าง/ลบได้จากหน้า Projects
+   ระบุ Demo ด้วยคำนำหน้าชื่อ Project: "[DEMO] " (ลบเฉพาะ Project ที่ชื่อขึ้นต้นด้วยคำนี้)
+   ===================================================================== */
+const DEMO_PREFIX = '[DEMO] ';
+const isDemo = (p) => typeof p.name === 'string' && p.name.startsWith(DEMO_PREFIX);
+const dateOff = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+
+const WELD = 'Spot Welding – Side Panel', LOAD = 'Loading ชิ้นงานเข้า Jig';
+const DEMO_ROWS = [
+  { ps: WELD, we: 'Machine', fn: 'เชื่อมจุดตามตำแหน่งและจำนวนจุดที่กำหนด', fm: 'Weld spot missing (จุดเชื่อมตก)', ef: 'โครงสร้างไม่แข็งแรงตามสเปก อาจหลุดที่ไลน์ถัดไปหรือที่ลูกค้า', s: 8,
+    ca: 'โปรแกรมเชื่อมข้ามจุดเมื่อเกิดสัญญาณผิดพลาด', o: 4, pc: 'PLC นับจำนวนจุดเชื่อม และ interlock ไม่ปล่อยชิ้นงานถ้าจุดไม่ครบ', dc: 'Weld controller แจ้ง alarm เมื่อจำนวนจุดไม่ครบ', d: 3,
+    ra: '', ow: '', td: null, as: 'open', st: 'approved', src: 'ai' },
+  { ps: LOAD, we: 'Man', fn: 'วางชิ้นงานให้ตรงตำแหน่งใน jig', fm: 'Weld spot missing (จุดเชื่อมตก)', ef: 'โครงสร้างไม่แข็งแรงตามสเปก อาจหลุดที่ไลน์ถัดไปหรือที่ลูกค้า', s: 8,
+    ca: 'ผู้ปฏิบัติงานวางชิ้นงานผิดตำแหน่งใน jig ทำให้ electrode ไม่ถึงจุด', o: 5, pc: 'Locating pin และ clamp sensor ใน jig', dc: 'ตรวจด้วยสายตา 100% หลังเชื่อม', d: 7,
+    ra: 'เพิ่ม proximity sensor ตรวจตำแหน่งชิ้นงานก่อนเริ่มเชื่อม (poka-yoke)', ow: 'ทีม Maintenance', td: 20, as: 'open', st: 'reviewed', src: 'ai' },
+  { ps: WELD, we: 'Machine', fn: 'เชื่อมให้ได้ขนาด nugget ตามสเปก', fm: 'Nugget size under spec (nugget เล็กกว่าสเปก)', ef: 'ความแข็งแรงรอยเชื่อมต่ำกว่าข้อกำหนด เสี่ยงหลุดขณะใช้งาน', s: 9,
+    ca: 'Electrode tip สึกหรอเกินรอบ tip dress', o: 6, pc: 'Tip dress ตามจำนวนจุดที่กำหนด', dc: 'Chisel test สุ่มตรวจทุกกะ', d: 6,
+    ra: 'ติดตั้ง automatic tip dresser และตั้งค่า stepper เพิ่มกระแสตามจำนวนจุด', ow: 'ทีม Maintenance', td: -10, as: 'in_progress', st: 'reviewed', src: 'ai' },
+  { ps: WELD, we: 'Machine', fn: 'เชื่อมให้ได้ขนาด nugget ตามสเปก', fm: 'Nugget size under spec (nugget เล็กกว่าสเปก)', ef: 'ความแข็งแรงรอยเชื่อมต่ำกว่าข้อกำหนด เสี่ยงหลุดขณะใช้งาน', s: 9,
+    ca: 'กระแสเชื่อมต่ำหรือไม่คงที่ (แรงดันไฟตก)', o: 4, pc: 'Weld controller ปรับกระแสแบบ constant current', dc: 'Weld monitor ตรวจค่ากระแสและเวลาทุกจุด', d: 4,
+    ra: '', ow: '', td: null, as: 'open', st: 'reviewed', src: 'manual' },
+  { ps: WELD, we: 'Machine', fn: 'เชื่อมโดยไม่ทำให้ชิ้นงานเสียหาย', fm: 'Burn through (รูทะลุที่จุดเชื่อม)', ef: 'ชิ้นงานเสีย ต้อง scrap/rework และลดความแข็งแรง', s: 6,
+    ca: 'แรงกดหรือกระแสสูงเกินจากการตั้งค่าผิด', o: 3, pc: 'ล็อก parameter ด้วยรหัสผ่าน และ checklist ตั้งค่าเริ่มกะ', dc: 'ตรวจด้วยสายตาที่สถานีถัดไป', d: 6,
+    ra: '', ow: '', td: null, as: 'open', st: 'draft', src: 'ai' },
+  { ps: WELD, we: 'Material', fn: 'เชื่อมให้ผิวงานสะอาด ไม่มีเศษกระเด็น', fm: 'Excessive spatter (เศษกระเด็นมาก)', ef: 'เศษกระเด็นติดผิว กระทบการประกอบและรูปลักษณ์', s: 4,
+    ca: 'ผิวชิ้นงานมีน้ำมันหรือสิ่งสกปรก', o: 5, pc: 'ตรวจรับวัตถุดิบและควบคุมการเก็บ blank', dc: 'ตรวจด้วยสายตา', d: 7,
+    ra: 'กำหนดเกณฑ์ผิวงานด้วย limit sample ที่หน้าไลน์', ow: 'ทีม QA', td: 35, as: 'open', st: 'draft', src: 'ai' },
+  { ps: WELD, we: 'Machine', fn: 'Electrode ไม่ติดกับชิ้นงานหลังเชื่อม', fm: 'Electrode sticking (electrode ติดชิ้นงาน)', ef: 'ไลน์หยุดและชิ้นงานเสียรูป', s: 5,
+    ca: 'น้ำหล่อเย็น electrode ไหลไม่พอ', o: 4, pc: 'Flow switch และตรวจ filter รายสัปดาห์ (PM)', dc: 'Alarm จาก flow switch เมื่อน้ำไหลต่ำ', d: 3,
+    ra: '', ow: '', td: null, as: 'open', st: 'approved', src: 'manual' },
+  { ps: LOAD, we: 'Machine', fn: 'จับยึดชิ้นงานให้แนบสนิทก่อนเชื่อม', fm: 'Part deformation / gap เกินสเปก', ef: 'ประกอบไม่เข้ารูปในไลน์ถัดไป ต้อง rework', s: 7,
+    ca: 'แรง clamp ใน jig ไม่พอหรือไม่สม่ำเสมอ', o: 3, pc: 'ตรวจแรง clamp ตามแผน PM', dc: 'วัด gap ด้วย gauge ที่สถานีถัดไป', d: 4,
+    ra: '', ow: '', td: null, as: 'open', st: 'reviewed', src: 'manual' },
+  { ps: LOAD, we: 'Material', fn: 'ใช้วัตถุดิบถูกเบอร์ความหนา', fm: 'Wrong material thickness (ชิ้นงานผิดเบอร์ความหนา)', ef: 'จุดเชื่อมไม่ได้ขนาด ทั้ง lot อาจใช้งานไม่ได้', s: 8,
+    ca: 'ปนวัตถุดิบต่างเบอร์ที่หน้าไลน์', o: 2, pc: 'Kanban แยก part no. และ scan barcode ก่อนโหลด', dc: 'Scan barcode เทียบ BOM ก่อนเริ่มเชื่อม', d: 2,
+    ra: '', ow: '', td: null, as: 'open', st: 'approved', src: 'ai' }
+];
+const DEMO_EXTRA_ROW = { ps: WELD, we: 'Machine', fn: 'เชื่อมโดยไม่ทำให้ชิ้นงานเสียหาย', fm: 'Weld expulsion (น้ำเหล็กกระเด็นจากรอยเชื่อม)', ef: 'รอยเชื่อมอ่อนแอและมีเศษโลหะติดชิ้นงาน', s: 6,
+  ca: 'ช่องว่าง (gap) ระหว่างแผ่นเหล็กเกินกำหนด', o: 4, pc: 'ตรวจ gap ด้วย feeler gauge ตอนเริ่มกะ', dc: 'ตรวจด้วยสายตาและ weld monitor', d: 5,
+  ra: 'เพิ่มจุด clamp ใกล้ตำแหน่งเชื่อม', ow: 'ทีม Production', td: 25, as: 'open', st: 'draft', src: 'ai' };
+
+function demoRowToDb(r, docId, idx, std) {
+  return {
+    document_id: docId, sort_order: idx + 1, source: r.src, status: r.st,
+    process_step: r.ps, work_element: std === 'AIAG_VDA_2019' ? r.we : '', function_desc: r.fn,
+    failure_mode: r.fm, effect: r.ef, severity: r.s, cause: r.ca, occurrence: r.o,
+    prevention_control: r.pc, detection_control: r.dc, detection: r.d,
+    recommended_action: r.ra, action_owner: r.ow, target_date: r.td === null ? null : dateOff(r.td), action_status: r.as
+  };
+}
+async function buildDemoDoc(projectId, std, title, withRevisions) {
+  const doc = unwrap(await db.from('fmea_documents').insert({
+    project_id: projectId, title, standard_version: std, rpn_threshold: 100,
+    planning: std === 'AIAG_VDA_2019' ? {
+      customer: 'ลูกค้า OEM (ข้อมูลตัวอย่าง)', scope: 'รวม: สถานี Spot Welding Side Panel ไลน์ 2 / ไม่รวม: งานทาสีและงานตกแต่ง',
+      timing: 'Kick-off ต้นเดือน • Design freeze ปลายเดือน • SOP ไตรมาสหน้า (ตัวอย่าง)', basis: 'Process flow, Control plan, Lessons learned จากไลน์เดิม (ตัวอย่าง)'
+    } : {}
+  }).select().single());
+  const rows = unwrap(await db.from('fmea_items').insert(DEMO_ROWS.map((r, i) => demoRowToDb(r, doc.id, i, std))).select());
+  if (withRevisions) {
+    unwrap(await db.rpc('save_revision', { p_document_id: doc.id, p_note: 'Rev แรก: ร่างโดย AI และ review โดยทีม (ข้อมูลตัวอย่าง)', p_lock: true }));
+    const tipRow = rows.find((x) => x.failure_mode.startsWith('Nugget') && x.cause.startsWith('Electrode'));
+    if (tipRow) unwrap(await db.from('fmea_items').update({ occurrence: 4, detection: 4, action_status: 'done' }).eq('id', tipRow.id));
+    unwrap(await db.from('fmea_items').insert(demoRowToDb(DEMO_EXTRA_ROW, doc.id, DEMO_ROWS.length, std)));
+    unwrap(await db.rpc('save_revision', { p_document_id: doc.id, p_note: 'ปรับ O/D หลังติดตั้ง tip dresser อัตโนมัติ + เพิ่ม failure mode ใหม่ (ข้อมูลตัวอย่าง)', p_lock: false }));
+  }
+  return doc;
+}
+async function createDemo() {
+  if (!confirm('สร้างข้อมูล Demo?\nจะได้ 1 Project (Spot Welding) พร้อมเอกสาร FMEA 2 ฉบับ (AIAG-VDA 2019 และ AIAG 4th) มีแถวตัวอย่าง, Rev A/B\nลบออกได้ทีเดียวด้วยปุ่ม "ลบข้อมูล Demo"')) return;
+  toast('กำลังสร้างข้อมูล Demo…');
+  try {
+    const proj = unwrap(await db.from('projects').insert({
+      name: DEMO_PREFIX + 'Spot Welding – Side Panel', part_no: 'DEMO-SP-001', fmea_type: 'PFMEA',
+      process_name: 'Spot welding line 2 – Side panel assembly', responsible: 'ผู้รับผิดชอบ (ตัวอย่าง)', team: 'QA, Production, Maintenance (ตัวอย่าง)'
+    }).select().single());
+    await buildDemoDoc(proj.id, 'AIAG_VDA_2019', 'PFMEA Spot Welding — AIAG-VDA 2019', true);
+    await buildDemoDoc(proj.id, 'AIAG_4TH', 'PFMEA Spot Welding — AIAG 4th (RPN)', false);
+    toast('สร้างข้อมูล Demo แล้ว', 'ok');
+  } catch (e) {
+    toast('สร้างข้อมูล Demo ไม่สำเร็จ: ' + e.message, 'error');
+    try { await db.from('projects').delete().like('name', DEMO_PREFIX + '%'); } catch (_) { /* ล้างข้อมูลที่สร้างค้าง */ }
+  }
+  showProjects();
+}
+async function deleteDemo() {
+  if (!confirm('ลบข้อมูล Demo ทั้งหมด?\nจะลบเฉพาะ Project ที่ชื่อขึ้นต้นด้วย "[DEMO]" รวมเอกสารและ revision ในนั้น\nProject จริงของคุณไม่ถูกแตะต้อง')) return;
+  try {
+    const gone = unwrap(await db.from('projects').delete().like('name', DEMO_PREFIX + '%').select('id'));
+    toast(`ลบข้อมูล Demo แล้ว (${gone ? gone.length : 0} project)`, 'ok');
+  } catch (e) { toast('ลบข้อมูล Demo ไม่สำเร็จ: ' + e.message, 'error'); }
+  showProjects();
+}
+/*DEMO_END*/
+
+async function deleteProject(p) {
+  if (!confirm(`ลบ Project "${p.name}" และ FMEA ทั้งหมดในนั้น?\nการลบกู้คืนไม่ได้`)) return;
+  try { unwrap(await db.from('projects').delete().eq('id', p.id)); showProjects(); }
+  catch (e) { toast('ลบไม่สำเร็จ: ' + e.message, 'error'); }
+}
+
+async function showProject(id) {
+  mount(shell(loadingView()));
+  try {
+    await ensureRef();
+    const project = unwrap(await db.from('projects').select('*').eq('id', id).single());
+    const docs = unwrap(await db.from('fmea_documents').select('*').eq('project_id', id).order('created_at'));
+    const stdName = (c) => (S.standards.find((s) => s.code === c) || {}).name || c;
+    const table = docs.length
+      ? h('table', { class: 'plain' },
+        h('thead', null, h('tr', null, ['เอกสาร', 'มาตรฐาน', 'Revision', 'สถานะ', 'สร้างเมื่อ', ''].map((t) => h('th', null, t)))),
+        h('tbody', null, docs.map((d) => h('tr', null,
+          h('td', null, h('a', { href: '#/d/' + d.id }, d.title)), h('td', null, stdName(d.standard_version)),
+          h('td', null, d.current_rev), h('td', null, badge(DOC_STATUS_LABEL[d.status], d.status === 'approved' ? 'green' : 'yellow')),
+          h('td', null, fmtDate(d.created_at)),
+          h('td', null, h('a', { class: 'btn sm primary', href: '#/d/' + d.id }, 'เปิด'), ' ',
+            h('button', { class: 'btn sm danger', onclick: () => deleteDoc(d, project) }, 'ลบ'))))))
+      : h('div', { class: 'card empty' }, 'ยังไม่มีเอกสาร FMEA — กด "สร้างเอกสาร FMEA" แล้วเลือกเวอร์ชั่นมาตรฐาน');
+    mount(shell(
+      h('a', { href: '#/', class: 'small muted' }, '← Projects'),
+      h('div', { class: 'page-head' }, h('h2', null, project.name), badge(project.fmea_type, 'blue'),
+        project.part_no ? badge('Part ' + project.part_no, 'gray') : null, h('div', { class: 'spacer' }),
+        h('button', { class: 'btn primary', onclick: () => newDocModal(project) }, '➕ สร้างเอกสาร FMEA')),
+      table));
+  } catch (e) { showFatal(e); }
+}
+function newDocModal(project) {
+  const title = h('input', { type: 'text', maxlength: 200, value: `${project.fmea_type} ${project.name}` });
+  const std = h('select', null, S.standards.map((s) => h('option', { value: s.code }, s.name)));
+  const thr = h('input', { type: 'number', min: 1, max: 1000, value: '100' });
+  const desc = h('div', { class: 'hint' });
+  const thrBox = h('div', null, field('RPN threshold (แถวที่ RPN ≥ ค่านี้ = ความเสี่ยงสูง)', thr));
+  const sync = () => {
+    const s = S.standards.find((x) => x.code === std.value);
+    desc.textContent = s ? s.description || '' : '';
+    thrBox.style.display = s && s.method === 'RPN' ? '' : 'none';
+  };
+  std.addEventListener('change', sync); sync();
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const go = h('button', { class: 'btn primary' }, 'สร้าง');
+  go.addEventListener('click', async () => {
+    if (!title.value.trim()) { err.textContent = 'กรุณาระบุชื่อเอกสาร'; err.hidden = false; return; }
+    go.disabled = true;
+    try {
+      const d = unwrap(await db.from('fmea_documents').insert({
+        project_id: project.id, title: title.value.trim(), standard_version: std.value,
+        rpn_threshold: Math.min(1000, Math.max(1, parseInt(thr.value, 10) || 100))
+      }).select().single());
+      m.close(); location.hash = '#/d/' + d.id;
+    } catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
+  });
+  m = openModal('สร้างเอกสาร FMEA', h('div', null, field('ชื่อเอกสาร *', title),
+    field('เวอร์ชั่นมาตรฐาน FMEA *', std, 'เลือกแล้วเปลี่ยนไม่ได้ (เกณฑ์ S/O/D และวิธีประเมินความเสี่ยงจะเปลี่ยนตามเวอร์ชั่น)'),
+    desc, thrBox, err,
+    h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), go)));
+}
+async function deleteDoc(d, project) {
+  if (!confirm(`ลบเอกสาร "${d.title}" รวมทุก revision?`)) return;
+  try { unwrap(await db.from('fmea_documents').delete().eq('id', d.id)); showProject(project.id); }
+  catch (e) { toast('ลบไม่สำเร็จ: ' + e.message, 'error'); }
+}
+
+/* =====================================================================
+   FMEA document
+   ===================================================================== */
+async function showDoc(id) {
+  mount(shell(loadingView()));
+  try {
+    await ensureRef();
+    const doc = unwrap(await db.from('fmea_documents').select('*, projects(*)').eq('id', id).single());
+    S.project = doc.projects; delete doc.projects; S.doc = doc;
+    S.standard = S.standards.find((s) => s.code === doc.standard_version);
+    if (!S.standard) throw new Error('ไม่พบเวอร์ชั่นมาตรฐาน ' + doc.standard_version + ' (ถูกปิดใช้งาน?)');
+    await ensureCriteria(doc.standard_version);
+    S.viewRev = null; S.viewItems = []; S.tab = 'table';
+    S.filters = { q: '', risk: 'all', status: 'all', sort: 'manual' };
+    await Promise.all([reloadItems(), reloadRevisions()]);
+    renderDoc();
+  } catch (e) { showFatal(e); }
+}
+async function reloadItems() {
+  S.items = unwrap(await db.from('fmea_items').select('*').eq('document_id', S.doc.id)
+    .order('sort_order').order('created_at'));
+}
+async function reloadRevisions() {
+  S.revisions = unwrap(await db.from('fmea_revisions')
+    .select('id,document_id,rev_label,note,standard_version,created_by_email,created_at,is_locked')
+    .eq('document_id', S.doc.id).order('created_at', { ascending: false }));
+}
+async function reloadDoc() {
+  const d = unwrap(await db.from('fmea_documents').select('*').eq('id', S.doc.id).single());
+  S.doc = d;
+}
+
+const isAP = () => S.standard.method === 'AP';
+const roMode = () => !!S.viewRev;
+const curItems = () => (roMode() ? S.viewItems : S.items);
+
+/* ---------- ความเสี่ยง ---------- */
+function isRated(i) { return i.severity != null && i.occurrence != null && i.detection != null; }
+function riskLevel(i) {
+  if (!isRated(i)) return 'none';
+  if (isAP()) return ({ H: 'high', M: 'med', L: 'low' })[i.ap] || 'none';
+  if (i.rpn == null) return 'none';
+  const t = S.doc.rpn_threshold;
+  return i.rpn >= t ? 'high' : (i.rpn >= t / 2 ? 'med' : 'low');
+}
+function cmpRisk(a, b) {
+  if (!isAP()) return ((a.rpn || 0) - (b.rpn || 0)) || ((a.severity || 0) - (b.severity || 0));
+  return (LEVEL_RANK[riskLevel(a)] - LEVEL_RANK[riskLevel(b)]) || ((a.severity || 0) - (b.severity || 0)) || ((a.rpn || 0) - (b.rpn || 0));
+}
+function visibleItems(all) {
+  const f = S.filters, q = f.q.trim().toLowerCase();
+  let list = all.filter((it) => {
+    if (q && !SEARCH_FIELDS.some((k) => String(it[k] || '').toLowerCase().includes(q))) return false;
+    if (f.risk !== 'all' && riskLevel(it) !== f.risk) return false;
+    if (f.status !== 'all' && it.status !== f.status) return false;
+    return true;
+  });
+  if (f.sort === 'risk') list = [...list].sort((a, b) => cmpRisk(b, a));
+  return list;
+}
+
+/* ---------- หน้าเอกสาร ---------- */
+function renderDoc() {
+  const d = S.doc, p = S.project, std = S.standard, ro = roMode();
+  const children = [];
+
+  children.push(h('div', { class: 'print-head' },
+    h('h1', null, `${p.fmea_type} — ${d.title}`),
+    h('table', null,
+      h('tr', null, h('td', null, 'Project: ' + p.name), h('td', null, 'Part no.: ' + (p.part_no || '-')), h('td', null, 'Process: ' + (p.process_name || '-'))),
+      h('tr', null, h('td', null, 'Standard: ' + std.name), h('td', null, 'Revision: ' + (ro ? S.viewRev.rev_label : d.current_rev)), h('td', null, 'วันที่พิมพ์: ' + new Date().toLocaleDateString('th-TH'))),
+      h('tr', null, h('td', null, 'ผู้รับผิดชอบ: ' + (p.responsible || '-')), h('td', { colspan: 2 }, 'ทีม: ' + (p.team || '-'))))));
+
+  children.push(h('div', { class: 'doc-head' },
+    h('div', null,
+      h('a', { href: '#/p/' + p.id, class: 'small muted noprint' }, '← ' + p.name),
+      h('h2', null, d.title),
+      h('div', { class: 'badges noprint' }, badge(p.fmea_type, 'blue'), badge(std.name, 'purple'),
+        badge(ro ? S.viewRev.rev_label + ' (read-only)' : d.current_rev, 'gray'),
+        badge(DOC_STATUS_LABEL[d.status], d.status === 'approved' ? 'green' : 'yellow'))),
+    h('div', { class: 'spacer' }),
+    h('div', { class: 'head-actions noprint' },
+      h('span', { class: 'muted small', id: 'savestate' }, ''),
+      h('button', { class: 'btn', onclick: critModal }, '📖 เกณฑ์ S/O/D'),
+      h('button', { class: 'btn', onclick: settingsModal }, '⚙️ ตั้งค่าเอกสาร'))));
+
+  if (isAP() && !std.ap_verified) {
+    children.push(h('div', { class: 'banner warn noprint' }, '⚠️ ตาราง Action Priority และเกณฑ์ S/O/D ใน DB ยังไม่ได้ verify กับ AIAG & VDA Handbook ฉบับจริง — ตรวจสอบก่อนใช้ใน audit (ดู README ขั้นตอน "Verify AP")'));
+  }
+  if (ro) {
+    children.push(h('div', { class: 'banner info noprint' },
+      `กำลังดู ${S.viewRev.rev_label} (read-only) — บันทึกเมื่อ ${fmtDate(S.viewRev.created_at)}`, h('div', { class: 'spacer' }),
+      h('button', { class: 'btn', onclick: exitView }, '← กลับไป Working draft'),
+      h('button', { class: 'btn', onclick: () => restoreRevision(S.viewRev) }, '↩︎ Restore revision นี้')));
+  }
+  if (isAP()) children.push(stepStrip());
+
+  const tabs = [['table', '📋 ตาราง FMEA'], ['dash', '📊 Dashboard'], ['rev', `🗂️ Revisions (${S.revisions.length})`]];
+  children.push(h('div', { class: 'tabs noprint' }, tabs.map(([k, label]) =>
+    h('button', { class: 'tab' + (S.tab === k ? ' active' : ''), onclick: () => { S.tab = k; renderDoc(); } }, label))));
+  children.push(h('div', { id: 'toolbarwrap' }), h('div', { id: 'bodywrap' }));
+
+  mount(shell(...children));
+  renderBody();
+}
+function stepStrip() {
+  const it = S.items;
+  const planned = Object.values(S.doc.planning || {}).some((v) => String(v).trim());
+  const steps = [
+    ['1 Planning', planned], ['2 Structure', it.some((i) => i.process_step)], ['3 Function', it.some((i) => i.function_desc)],
+    ['4 Failure', it.some((i) => i.failure_mode && i.effect && i.cause)], ['5 Risk', it.length > 0 && it.every((i) => i.ap)],
+    ['6 Optimization', it.some((i) => i.recommended_action)], ['7 Results', S.revisions.length > 0]
+  ];
+  return h('div', { class: 'steps' }, steps.map(([t, ok]) => h('span', { class: 'step' + (ok ? ' done' : '') }, (ok ? '✓ ' : '') + t)));
+}
+function renderBody() {
+  const tb = document.getElementById('toolbarwrap'), bd = document.getElementById('bodywrap');
+  if (!tb || !bd) return;
+  tb.replaceChildren(); bd.replaceChildren();
+  if (S.tab === 'table') { tb.append(buildToolbar()); bd.append(h('div', { class: 'table-wrap', id: 'tablewrap' })); renderTable(); }
+  else if (S.tab === 'dash') bd.append(buildDashboard());
+  else bd.append(buildRevisions());
+}
+function buildToolbar() {
+  const f = S.filters, ro = roMode();
+  const sel = (key, opts) => h('select', { value: f[key], onchange: (e) => { f[key] = e.target.value; renderTable(); } },
+    opts.map(([v, l]) => h('option', { value: v }, l)));
+  return h('div', { class: 'toolbar' },
+    !ro ? h('button', { class: 'btn primary', onclick: () => aiModal('generate') }, '✨ Generate with AI') : null,
+    !ro ? h('button', { class: 'btn', onclick: () => aiModal('suggest_more') }, '💡 Suggest more') : null,
+    !ro ? h('button', { class: 'btn', onclick: addRow }, '➕ Add row') : null,
+    h('input', { type: 'search', class: 'search', placeholder: '🔎 ค้นหา…', value: f.q, oninput: (e) => { f.q = e.target.value; renderTable(); } }),
+    sel('risk', [['all', 'ทุกระดับความเสี่ยง'], ['high', 'สูง'], ['med', 'กลาง'], ['low', 'ต่ำ'], ['none', 'ยังไม่ประเมิน']]),
+    sel('status', [['all', 'ทุกสถานะ'], ['draft', 'Draft'], ['reviewed', 'Reviewed'], ['approved', 'Approved']]),
+    sel('sort', [['manual', 'เรียงตามลำดับ'], ['risk', 'เรียงตามความเสี่ยง']]),
+    h('div', { class: 'spacer' }),
+    !ro ? h('button', { class: 'btn', onclick: saveRevisionModal }, '💾 Save as new revision') : null,
+    h('button', { class: 'btn', onclick: exportExcel }, '📤 Excel'),
+    h('button', { class: 'btn', onclick: () => window.print() }, '🖨️ Print / PDF'));
+}
+
+/* ---------- คอลัมน์ & ตาราง ---------- */
+function columns() {
+  const cols = [
+    { k: '#', label: '#' },
+    { k: 'process_step', label: 'Process step', text: true },
+    isAP() ? { k: 'work_element', label: 'Work element (4M)', text: true } : null,
+    { k: 'function_desc', label: 'Function / Requirement', text: true },
+    { k: 'failure_mode', label: 'Failure Mode', text: true },
+    { k: 'effect', label: 'Effect', text: true },
+    { k: 'severity', label: 'S', sod: 'S' },
+    { k: 'cause', label: 'Cause', text: true },
+    { k: 'occurrence', label: 'O', sod: 'O' },
+    { k: 'prevention_control', label: 'Prevention Control', text: true },
+    { k: 'detection_control', label: 'Detection Control', text: true },
+    { k: 'detection', label: 'D', sod: 'D' },
+    { k: 'risk', label: isAP() ? 'AP' : 'RPN' },
+    { k: 'recommended_action', label: 'Recommended Action', text: true },
+    { k: 'action_owner', label: 'Owner', text: true },
+    { k: 'target_date', label: 'Target date', date: true },
+    { k: 'action_status', label: 'Action status', opts: ACTION_LABEL },
+    { k: 'status', label: 'Review', opts: STATUS_LABEL },
+    { k: 'tools', label: '', cls: 'noprint-col' }
+  ];
+  return cols.filter(Boolean);
+}
+function autoGrow(ta) { ta.style.height = 'auto'; ta.style.height = Math.max(40, ta.scrollHeight + 2) + 'px'; }
+
+function renderTable() {
+  const wrap = document.getElementById('tablewrap');
+  if (!wrap) return;
+  const ro = roMode(), all = curItems(), cols = columns(), list = visibleItems(all);
+  const f = S.filters;
+  const canReorder = !ro && f.sort === 'manual' && !f.q && f.risk === 'all' && f.status === 'all';
+  const thead = h('thead', null, h('tr', null, cols.map((c) => h('th', { class: c.cls || null }, c.label))));
+  const tbody = h('tbody', null, list.length
+    ? list.map((it) => buildRow(it, all, cols, ro, canReorder))
+    : h('tr', null, h('td', { colspan: cols.length, class: 'empty' },
+      all.length ? 'ไม่พบแถวที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูล — กด "Generate with AI" หรือ "Add row"')));
+  wrap.replaceChildren(h('table', { class: 'fmea' }, thead, tbody));
+  wrap.querySelectorAll('textarea').forEach(autoGrow);
+}
+function buildRow(item, all, cols, ro, canReorder) {
+  const tr = h('tr', { 'data-id': item.id, class: 'row-' + riskLevel(item) });
+  cols.forEach((c) => {
+    if (c.k === '#') tr.append(h('td', { class: 'num' }, String(all.indexOf(item) + 1)));
+    else if (c.text) tr.append(textCell(item, c, ro));
+    else if (c.sod) tr.append(sodCell(item, c, ro));
+    else if (c.k === 'risk') tr.append(riskCell(item));
+    else if (c.date) tr.append(dateCell(item, c, ro));
+    else if (c.opts) tr.append(selectCell(item, c, ro));
+    else if (c.k === 'tools') tr.append(toolsCell(item, ro, canReorder, tr));
+  });
+  return tr;
+}
+function textCell(item, c, ro) {
+  const val = item[c.k] == null ? '' : String(item[c.k]);
+  const ta = h('textarea', { rows: 2, maxlength: 1000, readonly: ro });
+  ta.value = val;
+  const pv = h('div', { class: 'pv' }, val);
+  if (!ro) {
+    ta.addEventListener('input', () => { autoGrow(ta); pv.textContent = ta.value; });
+    ta.addEventListener('change', () => saveField(item, c.k, ta.value.trim()));
+  }
+  return h('td', null, ta, pv);
+}
+function sodCell(item, c, ro) {
+  const cur = item[c.k] == null ? '' : String(item[c.k]);
+  const sel = h('select', { class: 'sod', disabled: ro, title: critDesc(c.sod, item[c.k]), value: cur },
+    h('option', { value: '' }, '–'), Array.from({ length: 10 }, (_, i) => h('option', { value: String(i + 1) }, String(i + 1))));
+  sel.value = cur;
+  sel.addEventListener('change', () => {
+    const v = sel.value === '' ? null : parseInt(sel.value, 10);
+    sel.title = critDesc(c.sod, v);
+    saveField(item, c.k, v);
+  });
+  return h('td', null, sel, h('div', { class: 'pv' }, cur));
+}
+function riskCell(item) {
+  const txt = isAP() ? (item.ap || '–') : (item.rpn == null ? '–' : item.rpn);
+  return h('td', { class: 'risk' }, h('b', null, txt), item.severity >= 9 ? h('div', { class: 'sbadge' }, 'S≥9') : null);
+}
+function dateCell(item, c, ro) {
+  const inp = h('input', { type: 'date', disabled: ro, value: item[c.k] || '' });
+  inp.addEventListener('change', () => saveField(item, c.k, inp.value || null));
+  return h('td', null, inp, h('div', { class: 'pv' }, item[c.k] || ''));
+}
+function selectCell(item, c, ro) {
+  const sel = h('select', { class: 'sel', disabled: ro, value: item[c.k] },
+    Object.entries(c.opts).map(([v, l]) => h('option', { value: v }, l)));
+  sel.value = item[c.k];
+  sel.addEventListener('change', () => saveField(item, c.k, sel.value));
+  return h('td', null, sel, h('div', { class: 'pv' }, c.opts[item[c.k]] || ''));
+}
+let dragId = null;
+function toolsCell(item, ro, canReorder, tr) {
+  const td = h('td', { class: 'tools noprint-col' },
+    h('span', { class: 'src ' + item.source, title: item.source === 'ai' ? 'สร้างโดย AI — ต้อง review' : 'กรอกเอง' }, item.source === 'ai' ? 'AI' : 'Manual'));
+  if (ro) return td;
+  const handle = h('span', { class: 'handle' + (canReorder ? '' : ' disabled'), title: canReorder ? 'ลากเพื่อสลับลำดับ' : 'ลากไม่ได้เมื่อมีตัวกรองหรือเรียงตามความเสี่ยง' }, '⠿');
+  if (canReorder) {
+    handle.addEventListener('mousedown', () => { tr.draggable = true; });
+    tr.addEventListener('dragstart', (e) => { dragId = item.id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.id); tr.classList.add('dragging'); });
+    tr.addEventListener('dragend', () => { tr.draggable = false; tr.classList.remove('dragging'); });
+    tr.addEventListener('dragover', (e) => e.preventDefault());
+    tr.addEventListener('drop', (e) => { e.preventDefault(); onDrop(item.id); });
+  }
+  td.append(handle,
+    h('button', { class: 'btn sm ghost', title: 'ให้ AI ร่างแถวนี้ใหม่', onclick: () => regenRow(item) }, '✨'),
+    h('button', { class: 'btn sm ghost', title: 'เลื่อนขึ้น', disabled: !canReorder, onclick: () => moveItem(item.id, -1) }, '⬆'),
+    h('button', { class: 'btn sm ghost', title: 'เลื่อนลง', disabled: !canReorder, onclick: () => moveItem(item.id, 1) }, '⬇'),
+    h('button', { class: 'btn sm ghost', title: 'ลบแถว', onclick: () => deleteRow(item) }, '🗑'));
+  return td;
+}
+function refreshRow(item) {
+  const tr = document.querySelector(`tr[data-id="${item.id}"]`);
+  if (!tr) return;
+  tr.className = 'row-' + riskLevel(item);
+  const old = tr.querySelector('td.risk');
+  if (old) old.replaceWith(riskCell(item));
+}
+function setSaving(on) {
+  S.saving += on ? 1 : -1;
+  const el = document.getElementById('savestate');
+  if (el) el.textContent = S.saving > 0 ? '⏳ กำลังบันทึก…' : '✓ บันทึกแล้ว';
+}
+
+/* ---------- แก้ไข / เพิ่ม / ลบ / จัดลำดับ ---------- */
+async function saveField(item, k, v) {
+  if (roMode()) return;
+  const old = item[k] === undefined ? null : item[k];
+  if (old === v) return;
+  const prev = item[k];
+  item[k] = v;
+  setSaving(true);
+  try {
+    const row = unwrap(await db.from('fmea_items').update({ [k]: v }).eq('id', item.id).select().single());
+    Object.assign(item, row);
+    refreshRow(item);
+  } catch (e) {
+    item[k] = prev;
+    toast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
+    await reloadItems(); renderTable();
+  } finally { setSaving(false); }
+}
+async function addRow() {
+  const max = S.items.reduce((m, i) => Math.max(m, i.sort_order || 0), 0);
+  try {
+    const row = unwrap(await db.from('fmea_items').insert({ document_id: S.doc.id, source: 'manual', status: 'draft', sort_order: max + 1 }).select().single());
+    S.items.push(row); renderTable();
+    const tr = document.querySelector(`tr[data-id="${row.id}"]`);
+    if (tr) { tr.scrollIntoView({ block: 'center' }); const ta = tr.querySelector('textarea'); if (ta) ta.focus(); }
+  } catch (e) { toast('เพิ่มแถวไม่สำเร็จ: ' + e.message, 'error'); }
+}
+async function deleteRow(item) {
+  if (!confirm('ลบแถวนี้?')) return;
+  try {
+    unwrap(await db.from('fmea_items').delete().eq('id', item.id));
+    S.items = S.items.filter((x) => x.id !== item.id); renderTable();
+  } catch (e) { toast('ลบไม่สำเร็จ: ' + e.message, 'error'); }
+}
+async function persistOrder() {
+  const jobs = [];
+  S.items.forEach((it, idx) => {
+    if (it.sort_order !== idx + 1) { it.sort_order = idx + 1; jobs.push(db.from('fmea_items').update({ sort_order: it.sort_order }).eq('id', it.id)); }
+  });
+  const res = await Promise.all(jobs);
+  const bad = res.find((r) => r.error);
+  if (bad) { toast('บันทึกลำดับไม่สำเร็จ: ' + bad.error.message, 'error'); await reloadItems(); }
+}
+async function moveItem(id, dir) {
+  const a = S.items, i = a.findIndex((x) => x.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= a.length) return;
+  [a[i], a[j]] = [a[j], a[i]];
+  await persistOrder(); renderTable();
+}
+async function onDrop(targetId) {
+  if (!dragId || dragId === targetId) return;
+  const a = S.items, from = a.findIndex((x) => x.id === dragId), to = a.findIndex((x) => x.id === targetId);
+  dragId = null;
+  if (from < 0 || to < 0) return;
+  const [m] = a.splice(from, 1); a.splice(to, 0, m);
+  await persistOrder(); renderTable();
+}
+
+/* =====================================================================
+   AI
+   ===================================================================== */
+async function callAI(payload) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await db.functions.invoke('fmea-generate', { body: payload });
+    if (!error) {
+      if (data && data.error) throw new Error(data.error);
+      if (!data || !Array.isArray(data.items)) throw new Error('ผลลัพธ์จาก AI ไม่ถูกต้อง');
+      return data;
+    }
+    let status = error.context && error.context.status;
+    let msg = error.message;
+    try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch (_) { /* ignore */ }
+    const retryable = !status || status >= 500;
+    if (attempt === 0 && retryable && status !== 504) { await sleep(1500); continue; } // retry 1 ครั้งสำหรับ error ชั่วคราว
+    throw new Error(msg);
+  }
+  throw new Error('เรียก AI ไม่สำเร็จ');
+}
+function aiModal(mode) {
+  if (S.busy) return toast('AI กำลังทำงานอยู่ กรุณารอสักครู่', 'error');
+  const L = S.lastAi;
+  const lastStep = S.items.length ? S.items[S.items.length - 1].process_step : '';
+  const ps = h('input', { type: 'text', maxlength: 500, value: L.process_step || lastStep, placeholder: 'เช่น Spot Welding – Side Panel' });
+  const fn = h('input', { type: 'text', maxlength: 1000, value: L.function_desc, placeholder: 'เช่น เชื่อมจุดตามตำแหน่งและจำนวนจุดที่กำหนด' });
+  const rq = h('textarea', { rows: 2, maxlength: 2000, placeholder: 'เช่น Nugget diameter ≥ spec, ไม่มีจุดตก' }); rq.value = L.requirement;
+  const cx = h('textarea', { rows: 3, maxlength: 2000, placeholder: 'เครื่องจักร / วัสดุ / jig / การควบคุมที่มีอยู่แล้ว' }); cx.value = L.context;
+  const cnt = h('input', { type: 'number', min: 1, max: 10, value: String(L.count) });
+  const lang = h('select', { value: L.language }, h('option', { value: 'th' }, 'ไทย (ศัพท์เทคนิคเป็นอังกฤษ)'), h('option', { value: 'en' }, 'English'));
+  lang.value = L.language;
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const go = h('button', { class: 'btn primary' }, mode === 'suggest_more' ? '💡 แนะนำเพิ่ม' : '✨ Generate');
+  go.addEventListener('click', async () => {
+    const payload = {
+      document_id: S.doc.id, mode, process_step: ps.value.trim(), function_desc: fn.value.trim(),
+      requirement: rq.value.trim(), context: cx.value.trim(),
+      count: Math.min(10, Math.max(1, parseInt(cnt.value, 10) || 5)), language: lang.value
+    };
+    if (!payload.process_step) { err.textContent = 'กรุณาระบุ Process step'; err.hidden = false; return; }
+    S.lastAi = { process_step: payload.process_step, function_desc: payload.function_desc, requirement: payload.requirement, context: payload.context, count: payload.count, language: payload.language };
+    err.hidden = true; go.disabled = true; S.busy = true;
+    go.textContent = '⏳ AI กำลังทำงาน… (20–60 วินาที)';
+    try {
+      const res = await callAI(payload);
+      const max = S.items.reduce((mx, i) => Math.max(mx, i.sort_order || 0), 0);
+      const rows = res.items.map((it, i) => {
+        const r = { document_id: S.doc.id, source: 'ai', status: 'draft', sort_order: max + i + 1 };
+        AI_FIELDS.forEach((k) => { r[k] = it[k] === undefined ? null : it[k]; });
+        ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause', 'prevention_control', 'detection_control', 'recommended_action']
+          .forEach((k) => { r[k] = r[k] == null ? '' : String(r[k]); });
+        return r;
+      });
+      unwrap(await db.from('fmea_items').insert(rows));
+      await reloadItems(); m.close(); renderTable();
+      toast(`AI สร้าง ${rows.length} แถว (Draft) — กรุณา review ก่อนใช้งาน`, 'ok');
+    } catch (e) {
+      err.textContent = e.message; err.hidden = false; go.disabled = false; go.textContent = 'ลองอีกครั้ง';
+    } finally { S.busy = false; }
+  });
+  m = openModal(mode === 'suggest_more' ? '💡 ให้ AI แนะนำ Failure Mode เพิ่ม' : '✨ Generate FMEA ด้วย AI',
+    h('div', null,
+      h('div', { class: 'banner info' }, `ใช้เกณฑ์ของ: ${S.standard.name} — ผลจาก AI เป็น Draft เสมอ ต้อง Review / Approve ทีละแถว`),
+      field('Process step / Item *', ps), field('Function', fn), field('Requirement', rq), field('ข้อมูลเพิ่มเติม', cx),
+      h('div', { class: 'two-col' }, field('จำนวนแถวที่ต้องการ (1–10)', cnt), field('ภาษาผลลัพธ์', lang)), err,
+      h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ปิด'), go)));
+}
+async function regenRow(item) {
+  if (S.busy) return toast('AI กำลังทำงานอยู่ กรุณารอสักครู่', 'error');
+  if (!confirm('ให้ AI ร่างแถวนี้ใหม่?\nข้อมูลเดิมของแถวจะถูกแทนที่ และสถานะกลับเป็น Draft')) return;
+  const tr = document.querySelector(`tr[data-id="${item.id}"]`);
+  if (tr) tr.classList.add('busy');
+  S.busy = true;
+  try {
+    const res = await callAI({
+      document_id: S.doc.id, mode: 'regenerate_row', language: S.lastAi.language,
+      row: { process_step: item.process_step, function_desc: item.function_desc, failure_mode: item.failure_mode, effect: item.effect, cause: item.cause }
+    });
+    const r = res.items[0], patch = { source: 'ai', status: 'draft' };
+    AI_FIELDS.forEach((k) => { patch[k] = r[k] === undefined ? null : r[k]; });
+    ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause', 'prevention_control', 'detection_control', 'recommended_action']
+      .forEach((k) => { patch[k] = patch[k] == null ? '' : String(patch[k]); });
+    Object.assign(item, unwrap(await db.from('fmea_items').update(patch).eq('id', item.id).select().single()));
+    renderTable(); toast('AI ร่างแถวใหม่แล้ว (Draft)', 'ok');
+  } catch (e) { toast(e.message, 'error'); if (tr) tr.classList.remove('busy'); }
+  finally { S.busy = false; }
+}
+
+/* =====================================================================
+   Dashboard
+   ===================================================================== */
+function buildDashboard() {
+  const items = curItems();
+  const lv = { high: 0, med: 0, low: 0, none: 0 };
+  items.forEach((i) => { lv[riskLevel(i)]++; });
+  const st = { draft: 0, reviewed: 0, approved: 0 };
+  items.forEach((i) => { st[i.status] = (st[i.status] || 0) + 1; });
+  const open = items.filter((i) => i.recommended_action && i.action_status !== 'done');
+  const top = items.filter((i) => riskLevel(i) !== 'none').sort((a, b) => cmpRisk(b, a)).slice(0, 5);
+  const rated = items.length - lv.none;
+  const pct = (n) => (rated ? (n / rated) * 100 : 0) + '%';
+  const stat = (label, val, cls) => h('div', { class: 'stat ' + (cls || '') }, h('b', null, String(val)), h('span', { class: 'muted small' }, label));
+  const lvl = (i) => h('span', { class: 'badge ' + ({ high: 'red', med: 'yellow', low: 'green', none: 'gray' })[riskLevel(i)] }, isAP() ? (i.ap || '–') : (i.rpn == null ? '–' : i.rpn));
+  const label = (i) => [i.process_step, i.failure_mode].filter(Boolean).join(' › ') || '(แถวว่าง)';
+
+  const topTable = top.length
+    ? h('table', { class: 'plain' }, h('thead', null, h('tr', null, ['Failure mode', 'S', 'O', 'D', isAP() ? 'AP' : 'RPN'].map((t) => h('th', null, t)))),
+      h('tbody', null, top.map((i) => h('tr', null, h('td', null, label(i)), h('td', null, i.severity), h('td', null, i.occurrence), h('td', null, i.detection), h('td', null, lvl(i))))))
+    : h('div', { class: 'muted' }, 'ยังไม่มีแถวที่ประเมิน S/O/D');
+  const openTable = open.length
+    ? h('table', { class: 'plain' }, h('thead', null, h('tr', null, ['Failure mode', 'Action', 'Owner', 'Target', 'Status'].map((t) => h('th', null, t)))),
+      h('tbody', null, open.map((i) => h('tr', null, h('td', null, label(i)), h('td', null, i.recommended_action), h('td', null, i.action_owner || '-'),
+        h('td', { class: i.target_date && i.target_date < todayStr() ? 'late' : '' }, i.target_date || '-'), h('td', null, ACTION_LABEL[i.action_status])))))
+    : h('div', { class: 'muted' }, 'ไม่มี Action ค้างอยู่ 🎉');
+
+  return h('div', null,
+    h('div', { class: 'stats' }, stat('Failure modes ทั้งหมด', items.length), stat('ความเสี่ยงสูง', lv.high, 'red'), stat('ความเสี่ยงกลาง', lv.med, 'yel'),
+      stat('ความเสี่ยงต่ำ', lv.low, 'grn'), stat('ยังไม่ประเมิน', lv.none), stat('Actions ค้างอยู่', open.length, open.length ? 'yel' : '')),
+    h('div', { class: 'card' }, h('b', null, 'สัดส่วนความเสี่ยง (เฉพาะแถวที่ประเมินแล้ว)'),
+      h('div', { class: 'bar' }, h('span', { class: 'h', style: 'width:' + pct(lv.high) }), h('span', { class: 'm', style: 'width:' + pct(lv.med) }), h('span', { class: 'l', style: 'width:' + pct(lv.low) })),
+      h('span', { class: 'small muted' }, `สถานะ review: Draft ${st.draft} • Reviewed ${st.reviewed} • Approved ${st.approved}`)),
+    h('div', { class: 'two', style: 'margin-top:14px' },
+      h('div', { class: 'card' }, h('h3', null, 'Top 5 ความเสี่ยง'), topTable),
+      h('div', { class: 'card' }, h('h3', null, 'Actions ที่ยังไม่เสร็จ'), openTable)));
+}
+
+/* =====================================================================
+   Revisions
+   ===================================================================== */
+function buildRevisions() {
+  const list = S.revisions.length
+    ? h('table', { class: 'plain' },
+      h('thead', null, h('tr', null, ['Revision', 'วันที่', 'โดย', 'Note', ''].map((t) => h('th', null, t)))),
+      h('tbody', null, S.revisions.map((r) => h('tr', null,
+        h('td', null, h('b', null, r.rev_label), ' ', r.is_locked ? badge('🔒 Locked', 'green') : null),
+        h('td', null, fmtDate(r.created_at)), h('td', null, r.created_by_email || '-'), h('td', null, r.note || ''),
+        h('td', null, h('div', { class: 'row-actions', style: 'margin:0' },
+          h('button', { class: 'btn sm', onclick: () => viewRevision(r) }, '👁 ดู'),
+          h('button', { class: 'btn sm', onclick: () => restoreRevision(r) }, '↩︎ Restore'),
+          !r.is_locked ? h('button', { class: 'btn sm', onclick: () => lockRevision(r) }, '🔒 Lock') : null,
+          !r.is_locked ? h('button', { class: 'btn sm danger', onclick: () => deleteRevision(r) }, 'ลบ') : null))))))
+    : h('div', { class: 'card empty' }, 'ยังไม่มี revision — กด "Save as new revision" ในแท็บตาราง');
+
+  const opts = () => [h('option', { value: 'working' }, 'Working draft'),
+    ...S.revisions.map((r) => h('option', { value: r.id }, r.rev_label))];
+  const selA = h('select', null, opts()), selB = h('select', null, opts());
+  selA.value = S.revisions.length ? S.revisions[0].id : 'working'; selB.value = 'working';
+  const out = h('div');
+  const go = h('button', { class: 'btn primary' }, 'เปรียบเทียบ');
+  go.addEventListener('click', async () => {
+    if (selA.value === selB.value) { out.replaceChildren(h('div', { class: 'muted' }, 'กรุณาเลือก 2 ตัวที่ต่างกัน')); return; }
+    go.disabled = true;
+    try {
+      const get = async (v) => v === 'working' ? S.items : unwrap(await db.from('fmea_revisions').select('snapshot').eq('id', v).single()).snapshot;
+      const lab = (v) => v === 'working' ? 'Working draft' : S.revisions.find((r) => r.id === v).rev_label;
+      const [a, b] = await Promise.all([get(selA.value), get(selB.value)]);
+      renderDiff(out, a, b, lab(selA.value), lab(selB.value));
+    } catch (e) { out.replaceChildren(h('div', { class: 'error' }, e.message)); }
+    go.disabled = false;
+  });
+  return h('div', null, list,
+    h('div', { class: 'card', style: 'margin-top:14px' }, h('h3', null, 'เปรียบเทียบ 2 revisions'),
+      h('div', { class: 'cmp' }, 'จาก', selA, 'ไป', selB, go), out));
+}
+function rowLabel(i) { return [i.process_step, i.failure_mode, i.cause].filter(Boolean).join(' › ') || '(แถวว่าง)'; }
+function renderDiff(container, a, b, la, lb) {
+  const ma = new Map(a.map((i) => [i.row_key, i])), mb = new Map(b.map((i) => [i.row_key, i]));
+  const added = b.filter((i) => !ma.has(i.row_key)), removed = a.filter((i) => !mb.has(i.row_key));
+  const changed = [];
+  mb.forEach((nb, k) => {
+    const oa = ma.get(k);
+    if (!oa) return;
+    const fields = DIFF_FIELDS.filter((f) => String(oa[f] == null ? '' : oa[f]) !== String(nb[f] == null ? '' : nb[f]));
+    if (fields.length) changed.push({ o: oa, n: nb, fields });
+  });
+  const sod = (i) => `S${i.severity ?? '-'} O${i.occurrence ?? '-'} D${i.detection ?? '-'}`;
+  const parts = [h('p', null, h('b', null, `${la} → ${lb}: `), `เพิ่ม ${added.length} • ลบ ${removed.length} • เปลี่ยน ${changed.length}`)];
+  if (added.length) parts.push(h('h4', null, '➕ แถวที่เพิ่ม'), h('ul', null, added.map((i) => h('li', null, `${rowLabel(i)} (${sod(i)})`))));
+  if (removed.length) parts.push(h('h4', null, '➖ แถวที่ลบ'), h('ul', null, removed.map((i) => h('li', null, `${rowLabel(i)} (${sod(i)})`))));
+  if (changed.length) {
+    parts.push(h('h4', null, '✏️ แถวที่เปลี่ยน'), h('table', { class: 'plain' },
+      h('thead', null, h('tr', null, h('th', null, 'แถว'), h('th', null, 'สิ่งที่เปลี่ยน'))),
+      h('tbody', null, changed.map((c) => h('tr', null, h('td', null, rowLabel(c.n)),
+        h('td', null, c.fields.map((f) => h('div', null, h('b', null, FIELD_LABEL[f] + ': '),
+          h('span', { class: 'diff-old' }, String(c.o[f] == null || c.o[f] === '' ? '(ว่าง)' : c.o[f])), ' → ',
+          h('span', { class: 'diff-new' }, String(c.n[f] == null || c.n[f] === '' ? '(ว่าง)' : c.n[f]))))))))));
+  }
+  if (!added.length && !removed.length && !changed.length) parts.push(h('div', { class: 'muted' }, 'ไม่มีความแตกต่าง'));
+  container.replaceChildren(...parts);
+}
+function saveRevisionModal() {
+  const note = h('textarea', { rows: 3, maxlength: 2000, placeholder: 'สิ่งที่เปลี่ยนใน revision นี้' });
+  const lock = h('input', { type: 'checkbox', id: 'lockchk' });
+  const notApproved = S.items.filter((i) => i.status !== 'approved').length;
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const go = h('button', { class: 'btn primary' }, '💾 บันทึก revision');
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    try {
+      const r = unwrap(await db.rpc('save_revision', { p_document_id: S.doc.id, p_note: note.value.trim() || null, p_lock: lock.checked }));
+      m.close(); await Promise.all([reloadDoc(), reloadRevisions()]);
+      renderDoc(); toast(`บันทึก ${r.rev_label} แล้ว`, 'ok');
+    } catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
+  });
+  m = openModal('บันทึกเป็น Revision ใหม่', h('div', null,
+    h('p', { class: 'muted' }, `จะเก็บ snapshot ของตารางทั้งหมด (${S.items.length} แถว)` + (notApproved ? ` — ยังมี ${notApproved} แถวที่ไม่ใช่ Approved` : '')),
+    field('Revision note', note),
+    h('label', { class: 'f', for: 'lockchk' }, lock, ' Lock revision นี้ (Approved — ห้ามแก้ไข/ลบอีก)'),
+    err, h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), go)));
+}
+async function viewRevision(r) {
+  try {
+    const full = unwrap(await db.from('fmea_revisions').select('*').eq('id', r.id).single());
+    S.viewRev = full; S.viewItems = Array.isArray(full.snapshot) ? full.snapshot : [];
+    S.tab = 'table'; renderDoc();
+  } catch (e) { toast(e.message, 'error'); }
+}
+function exitView() { S.viewRev = null; S.viewItems = []; renderDoc(); }
+async function restoreRevision(r) {
+  if (!confirm(`Restore ${r.rev_label} กลับมาเป็น Working draft?\nข้อมูลใน Working draft ปัจจุบันจะถูกแทนที่ (แนะนำให้ Save as new revision ก่อน)`)) return;
+  try {
+    unwrap(await db.rpc('restore_revision', { p_revision_id: r.id }));
+    S.viewRev = null; S.viewItems = []; S.tab = 'table';
+    await Promise.all([reloadDoc(), reloadItems(), reloadRevisions()]);
+    renderDoc(); toast(`Restore ${r.rev_label} แล้ว`, 'ok');
+  } catch (e) { toast('Restore ไม่สำเร็จ: ' + e.message, 'error'); }
+}
+async function lockRevision(r) {
+  if (!confirm(`Lock ${r.rev_label}?\nล็อกแล้วจะแก้ไข/ลบไม่ได้อีก`)) return;
+  try { unwrap(await db.from('fmea_revisions').update({ is_locked: true }).eq('id', r.id)); await reloadRevisions(); renderDoc(); }
+  catch (e) { toast(e.message, 'error'); }
+}
+async function deleteRevision(r) {
+  if (!confirm(`ลบ ${r.rev_label}?`)) return;
+  try { unwrap(await db.from('fmea_revisions').delete().eq('id', r.id)); await reloadRevisions(); renderDoc(); }
+  catch (e) { toast(e.message, 'error'); }
+}
+
+/* =====================================================================
+   Settings / Criteria / Export
+   ===================================================================== */
+function critModal() {
+  const c = S.criteria[S.doc.standard_version];
+  const block = (t, name) => h('div', null, h('h4', null, name),
+    h('table', null, h('tbody', null, Array.from({ length: 10 }, (_, i) => 10 - i).map((s) => h('tr', null, h('td', null, s), h('td', null, c[t][s] || '-'))))));
+  openModal('เกณฑ์ S / O / D — ' + S.standard.name, h('div', null,
+    h('div', { class: 'crit' }, block('S', 'Severity'), block('O', 'Occurrence'), block('D', 'Detection')),
+    h('p', { class: 'hint' }, 'ข้อความเป็นการสรุปแนวคิด ไม่ใช่ตารางต้นฉบับ — ใช้ handbook ฉบับจริงเป็นหลักในงาน audit')), { wide: true });
+}
+function settingsModal() {
+  const d = S.doc;
+  const title = h('input', { type: 'text', maxlength: 200, value: d.title });
+  const thr = h('input', { type: 'number', min: 1, max: 1000, value: String(d.rpn_threshold) });
+  const pl = d.planning || {};
+  const pf = {
+    customer: h('input', { type: 'text', maxlength: 200, value: pl.customer || '' }),
+    scope: h('textarea', { rows: 2, maxlength: 1000 }), timing: h('input', { type: 'text', maxlength: 300, value: pl.timing || '' }),
+    basis: h('textarea', { rows: 2, maxlength: 1000 })
+  };
+  pf.scope.value = pl.scope || ''; pf.basis.value = pl.basis || '';
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const go = h('button', { class: 'btn primary' }, 'บันทึก');
+  go.addEventListener('click', async () => {
+    if (!title.value.trim()) { err.textContent = 'กรุณาระบุชื่อเอกสาร'; err.hidden = false; return; }
+    const patch = { title: title.value.trim() };
+    if (!isAP()) patch.rpn_threshold = Math.min(1000, Math.max(1, parseInt(thr.value, 10) || 100));
+    else patch.planning = { customer: pf.customer.value.trim(), scope: pf.scope.value.trim(), timing: pf.timing.value.trim(), basis: pf.basis.value.trim() };
+    go.disabled = true;
+    try { Object.assign(S.doc, unwrap(await db.from('fmea_documents').update(patch).eq('id', d.id).select().single())); m.close(); renderDoc(); }
+    catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
+  });
+  m = openModal('ตั้งค่าเอกสาร', h('div', null, field('ชื่อเอกสาร', title),
+    h('p', { class: 'hint' }, 'เวอร์ชั่นมาตรฐาน: ' + S.standard.name + ' (เปลี่ยนไม่ได้)'),
+    isAP()
+      ? h('div', null, h('h4', null, 'Step 1 — Planning & Preparation'), field('ลูกค้า / Customer', pf.customer),
+        field('ขอบเขต (Scope: รวม/ไม่รวม)', pf.scope), field('Timing / Milestone', pf.timing), field('ฐานข้อมูลที่ใช้ (Flow chart, Control plan, Lessons learned)', pf.basis))
+      : field('RPN threshold (RPN ≥ ค่านี้ = ความเสี่ยงสูง, ≥ ครึ่งหนึ่ง = กลาง)', thr),
+    err, h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), go)));
+}
+function exportExcel() {
+  if (typeof XLSX === 'undefined') return toast('โหลดไลบรารี Excel ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต', 'error');
+  const p = S.project, d = S.doc, rev = roMode() ? S.viewRev.rev_label : d.current_rev;
+  const cols = columns().filter((c) => c.k !== '#' && c.k !== 'tools');
+  const items = curItems();
+  const head = [['FMEA Type', p.fmea_type], ['Project', p.name], ['Part no.', p.part_no || ''], ['Process', p.process_name || ''],
+    ['Responsible', p.responsible || ''], ['Team', p.team || ''], ['Standard', S.standard.name], ['Revision', rev],
+    ['Exported', new Date().toLocaleString('th-TH')], []];
+  const header = ['No.', ...cols.map((c) => c.label)];
+  const rows = items.map((it, i) => [i + 1, ...cols.map((c) => {
+    if (c.k === 'risk') return isAP() ? (it.ap || '') : (it.rpn == null ? '' : it.rpn);
+    if (c.opts) return c.opts[it[c.k]] || '';
+    return it[c.k] == null ? '' : it[c.k];
+  })]);
+  const ws = XLSX.utils.aoa_to_sheet([...head, header, ...rows]);
+  ws['!cols'] = header.map((t) => ({ wch: ['No.', 'S', 'O', 'D', 'AP', 'RPN'].includes(t) ? 7 : 28 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'FMEA');
+  const safe = (s) => String(s).replace(/[^\w\-.ก-๙]+/g, '_');
+  XLSX.writeFile(wb, `FMEA_${safe(p.part_no || p.name)}_${safe(rev)}.xlsx`);
+}
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+(async function boot() {
+  if (CONFIG.SUPABASE_URL.startsWith('YOUR_') || CONFIG.SUPABASE_ANON_KEY.startsWith('YOUR_')) return renderSetup();
+  if (typeof supabase === 'undefined') { mount(h('div', { class: 'login' }, h('div', { class: 'error' }, 'โหลด Supabase library ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต'))); return; }
+  db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  const { data } = await db.auth.getSession();
+  S.user = data.session ? data.session.user : null;
+  window.addEventListener('hashchange', route);
+  db.auth.onAuthStateChange((_evt, session) => {
+    const newId = session && session.user ? session.user.id : null;
+    const oldId = S.user ? S.user.id : null;
+    S.user = session ? session.user : null;
+    if (newId !== oldId) setTimeout(route, 0); // เปลี่ยนหน้าเฉพาะเมื่อ login/logout จริง (ไม่ใช่ token refresh)
+  });
+  route();
+})();
+</script>
+</body>
+</html>
