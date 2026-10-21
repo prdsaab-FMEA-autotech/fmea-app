@@ -77,6 +77,9 @@ table.fmea textarea{border:1px solid transparent;background:transparent;padding:
 table.fmea textarea:hover{border-color:var(--line)} table.fmea textarea:focus{border-color:var(--primary);background:#fff;outline:none}
 table.fmea select.sod{width:58px;padding:5px 3px;text-align:center;font-weight:600}
 table.fmea select.sel{width:112px;padding:5px 4px} table.fmea input[type=date]{width:135px;padding:5px}
+table.fmea td.narrow textarea{min-width:64px;width:72px}
+td.ref{font-weight:700;color:var(--primary);vertical-align:middle;white-space:nowrap;width:48px}
+.hdr-summary{font-size:12px;color:var(--muted);margin:4px 0 6px}
 td.risk{text-align:center;vertical-align:middle;min-width:64px;font-size:15px}
 .sbadge{font-size:10px;color:var(--red);font-weight:700}
 tr.row-high td{background:#fff6f6} tr.row-med td{background:#fffcf0}
@@ -162,26 +165,66 @@ const S = {
   items: [], revisions: [], viewRev: null, viewItems: [],
   tab: 'table', saving: 0, busy: false,
   filters: { q: '', risk: 'all', status: 'all', sort: 'manual' },
-  lastAi: { process_step: '', function_desc: '', requirement: '', context: '', count: 5, language: 'th' }
+  lastAi: { step_no: '', process_step: '', function_desc: '', requirement: '', context: '', count: 5, language: 'th' }
 };
 
 const STATUS_LABEL = { draft: 'Draft', reviewed: 'Reviewed', approved: 'Approved' };
 const ACTION_LABEL = { open: 'Open', in_progress: 'In progress', done: 'Done' };
 const DOC_STATUS_LABEL = { draft: 'Draft', in_review: 'In review', approved: 'Approved' };
 const LEVEL_RANK = { high: 3, med: 2, low: 1, none: 0 };
-const SEARCH_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause',
-  'prevention_control', 'detection_control', 'recommended_action'];
-const DIFF_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'severity', 'cause',
+const SEARCH_FIELDS = ['step_no', 'process_item', 'process_step', 'work_element', 'function_item', 'function_desc', 'function_element',
+  'failure_mode', 'effect', 'effect_company', 'effect_customer', 'cause', 'prevention_control', 'detection_control',
+  'recommended_action', 'change_history'];
+const DIFF_FIELDS = ['step_no', 'process_item', 'process_step', 'work_element', 'function_item', 'function_desc', 'function_element',
+  'failure_mode', 'effect', 'effect_company', 'effect_customer', 'severity', 'cause',
   'occurrence', 'prevention_control', 'detection_control', 'detection', 'recommended_action', 'action_owner',
   'target_date', 'action_status', 'status'];
 const FIELD_LABEL = {
+  step_no: 'Station No.', process_item: 'Process item', function_item: 'Function (item)', function_element: 'Function (work element)',
+  effect_company: 'FE บริษัท', effect_customer: 'FE ลูกค้า', issue_rev: 'Issue/Rev.', change_history: 'History/Change',
   process_step: 'Process step', work_element: 'Work element', function_desc: 'Function', failure_mode: 'Failure Mode',
   effect: 'Effect', severity: 'S', cause: 'Cause', occurrence: 'O', prevention_control: 'Prevention',
   detection_control: 'Detection ctrl', detection: 'D', recommended_action: 'Action', action_owner: 'Owner',
   target_date: 'Target date', action_status: 'Action status', status: 'Review status'
 };
-const AI_FIELDS = ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'severity', 'cause',
-  'occurrence', 'prevention_control', 'detection_control', 'detection', 'recommended_action'];
+const AI_FIELDS = ['process_step', 'work_element', 'function_item', 'function_desc', 'function_element', 'failure_mode', 'effect',
+  'effect_company', 'effect_customer', 'severity', 'cause', 'occurrence', 'prevention_control', 'detection_control', 'detection', 'recommended_action'];
+const AI_TEXT_FIELDS = AI_FIELDS.filter((k) => !['severity', 'occurrence', 'detection'].includes(k));
+
+/* ---------- ฟอร์มบริษัท: หัวเอกสาร ---------- */
+// AP = ฟอร์มใหม่ DC4-2-026 (VDA 7 steps) • RPN = ฟอร์มเก่า DC4-4-052
+const FORM_INFO = {
+  AP:  { doc_no: 'DC4-2-026', issued: '23/06/2025' },
+  RPN: { doc_no: 'DC4-4-052', issued: '10/03/14' }
+};
+const HEADER_FIELDS = {
+  AP: [['customer', 'Customer'], ['ecn_no', 'ECN No.'], ['rank', 'Rank'], ['start_date', 'Start/Orig. Date', 'date'],
+    ['part_name', 'Part Name'], ['model_program', 'Model Year/Program'], ['supplier_code', 'Supplier Code'], ['revision_date', 'Revision Date', 'date'],
+    ['confidentiality', 'Confidentiality Level'], ['process_responsibility', 'Process Responsibility'], ['id_no', 'ID No.']],
+  RPN: [['customer', 'Cust'], ['model_program', 'Model'], ['supplier_code', 'Supl.Code'], ['ecn_no', 'ECN No'],
+    ['part_name', 'Part Name'], ['process_responsibility', 'Process Responsibility'], ['key_date', 'Key Date', 'date'], ['rank', 'Rank'],
+    ['start_date', 'ORI. DATE', 'date'], ['revision_date', 'REV. DATE', 'date'], ['id_no', 'ID No.']]
+};
+const formInfo = () => FORM_INFO[isAP() ? 'AP' : 'RPN'];
+function headerOf() {
+  return (roMode() ? (S.viewRev.header_snapshot || S.doc.header) : S.doc.header) || {};
+}
+// เลขอ้างอิง Failure Cause เช่น 5.1, 5.2 — คำนวณจาก Station No. + ลำดับแถวใน step เดียวกัน (ไม่เก็บใน DB จึงไม่เพี้ยนเมื่อสลับ/ลบแถว)
+function causeRef(item, all) {
+  const no = String(item.step_no || '').trim();
+  if (!no) return '';
+  let n = 0;
+  for (const x of all) {
+    if (String(x.step_no || '').trim() === no) n++;
+    if (x === item) break;
+  }
+  return no + '.' + n;
+}
+// revision เก่าที่เก็บก่อนมีช่อง FE บริษัท/ลูกค้า: แสดง effect เดิมในช่อง FE ลูกค้า (เฉพาะแบบ AP) เพื่อไม่ให้เปรียบเทียบเพี้ยน
+function normSnap(items) {
+  return (Array.isArray(items) ? items : []).map((i) => (isAP() && i.effect_customer === undefined && i.effect)
+    ? { ...i, effect_customer: i.effect } : i);
+}
 
 /* ---------- DOM helper (ปลอดภัยต่อ XSS: ข้อความทั้งหมดเป็น text node) ---------- */
 function h(tag, attrs, ...kids) {
@@ -424,7 +467,10 @@ function demoRowToDb(r, docId, idx, std) {
   return {
     document_id: docId, sort_order: idx + 1, source: r.src, status: r.st,
     process_step: r.ps, work_element: std === 'AIAG_VDA_2019' ? r.we : '', function_desc: r.fn,
-    failure_mode: r.fm, effect: r.ef, severity: r.s, cause: r.ca, occurrence: r.o,
+    step_no: std === 'AIAG_VDA_2019' ? '10' : '',
+    failure_mode: r.fm, effect: std === 'AIAG_VDA_2019' ? '' : r.ef,
+    effect_company: std === 'AIAG_VDA_2019' ? 'ต้องคัดแยกและซ่อมงานในไลน์ (ข้อมูลตัวอย่าง)' : '',
+    effect_customer: std === 'AIAG_VDA_2019' ? r.ef : '', severity: r.s, cause: r.ca, occurrence: r.o,
     prevention_control: r.pc, detection_control: r.dc, detection: r.d,
     recommended_action: r.ra, action_owner: r.ow, target_date: r.td === null ? null : dateOff(r.td), action_status: r.as
   };
@@ -526,7 +572,8 @@ function newDocModal(project) {
     try {
       const d = unwrap(await db.from('fmea_documents').insert({
         project_id: project.id, title: title.value.trim(), standard_version: std.value,
-        rpn_threshold: Math.min(1000, Math.max(1, parseInt(thr.value, 10) || 100))
+        rpn_threshold: Math.min(1000, Math.max(1, parseInt(thr.value, 10) || 100)),
+        header: project.responsible ? { process_responsibility: project.responsible } : {}
       }).select().single());
       m.close(); location.hash = '#/d/' + d.id;
     } catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
@@ -608,12 +655,23 @@ function renderDoc() {
   const d = S.doc, p = S.project, std = S.standard, ro = roMode();
   const children = [];
 
+  const hd = headerOf(), fi = formInfo();
+  const hf = (k) => hd[k] || '-';
+  const hrow = (...cells) => h('tr', null, cells.map(([l, v]) => h('td', null, l + ': ' + v)));
+  const hRows = isAP() ? [
+    hrow(['Customer', hf('customer')], ['ECN No.', hf('ecn_no')], ['Rank', hf('rank')], ['Start/Orig. Date', hf('start_date')]),
+    hrow(['Part No.', p.part_no || '-'], ['Model Year/Program', hf('model_program')], ['Supplier Code', hf('supplier_code')], ['Revision Date', hf('revision_date')]),
+    hrow(['Part Name', hf('part_name')], ['Confidentiality Level', hf('confidentiality')], ['Process Responsibility', hf('process_responsibility')], ['Rev. No.', ro ? S.viewRev.rev_label : d.current_rev])
+  ] : [
+    hrow(['Cust', hf('customer')], ['Model', hf('model_program')], ['Part No', p.part_no || '-'], ['Supl.Code', hf('supplier_code')]),
+    hrow(['ECN No', hf('ecn_no')], ['Part Name', hf('part_name')], ['Process Responsibility', hf('process_responsibility')], ['Key Date', hf('key_date')]),
+    hrow(['Rank', hf('rank')], ['REV. No.', ro ? S.viewRev.rev_label : d.current_rev], ['ORI. DATE', hf('start_date')], ['REV. DATE', hf('revision_date')])
+  ];
   children.push(h('div', { class: 'print-head' },
     h('h1', null, `${p.fmea_type} — ${d.title}`),
-    h('table', null,
-      h('tr', null, h('td', null, 'Project: ' + p.name), h('td', null, 'Part no.: ' + (p.part_no || '-')), h('td', null, 'Process: ' + (p.process_name || '-'))),
-      h('tr', null, h('td', null, 'Standard: ' + std.name), h('td', null, 'Revision: ' + (ro ? S.viewRev.rev_label : d.current_rev)), h('td', null, 'วันที่พิมพ์: ' + new Date().toLocaleDateString('th-TH'))),
-      h('tr', null, h('td', null, 'ผู้รับผิดชอบ: ' + (p.responsible || '-')), h('td', { colspan: 2 }, 'ทีม: ' + (p.team || '-'))))));
+    h('div', { class: 'small' }, `Doc. No.: ${fi.doc_no}  •  ID No.: ${hd.id_no || '-'}  •  Issued Form: ${fi.issued}  •  Standard: ${std.name}  •  วันที่พิมพ์: ${new Date().toLocaleDateString('th-TH')}`),
+    h('table', null, ...hRows),
+    h('div', { class: 'small' }, `ผู้รับผิดชอบ: ${p.responsible || '-'}  •  ทีม: ${p.team || '-'}`)));
 
   children.push(h('div', { class: 'doc-head' },
     h('div', null,
@@ -625,9 +683,12 @@ function renderDoc() {
     h('div', { class: 'spacer' }),
     h('div', { class: 'head-actions noprint' },
       h('span', { class: 'muted small', id: 'savestate' }, ''),
+      !ro ? h('button', { class: 'btn', onclick: headerModal }, '🧾 หัวเอกสาร') : null,
       h('button', { class: 'btn', onclick: critModal }, '📖 เกณฑ์ S/O/D'),
       h('button', { class: 'btn', onclick: settingsModal }, '⚙️ ตั้งค่าเอกสาร'))));
 
+  children.push(h('div', { class: 'hdr-summary noprint' },
+    `${fi.doc_no} • Customer: ${hd.customer || '-'} • Part: ${p.part_no || '-'}${hd.part_name ? ' (' + hd.part_name + ')' : ''} • Program: ${hd.model_program || '-'} • ECN: ${hd.ecn_no || '-'} • Rank: ${hd.rank || '-'}`));
   if (isAP() && !std.ap_verified) {
     children.push(h('div', { class: 'banner warn noprint' }, '⚠️ ตาราง Action Priority และเกณฑ์ S/O/D ใน DB ยังไม่ได้ verify กับ AIAG & VDA Handbook ฉบับจริง — ตรวจสอบก่อนใช้ใน audit (ดู README ขั้นตอน "Verify AP")'));
   }
@@ -649,10 +710,10 @@ function renderDoc() {
 }
 function stepStrip() {
   const it = S.items;
-  const planned = Object.values(S.doc.planning || {}).some((v) => String(v).trim());
+  const planned = Object.values(S.doc.planning || {}).some((v) => String(v).trim()) || Object.values(S.doc.header || {}).some((v) => String(v).trim());
   const steps = [
     ['1 Planning', planned], ['2 Structure', it.some((i) => i.process_step)], ['3 Function', it.some((i) => i.function_desc)],
-    ['4 Failure', it.some((i) => i.failure_mode && i.effect && i.cause)], ['5 Risk', it.length > 0 && it.every((i) => i.ap)],
+    ['4 Failure', it.some((i) => i.failure_mode && (i.effect || i.effect_company || i.effect_customer) && i.cause)], ['5 Risk', it.length > 0 && it.every((i) => i.ap)],
     ['6 Optimization', it.some((i) => i.recommended_action)], ['7 Results', S.revisions.length > 0]
   ];
   return h('div', { class: 'steps' }, steps.map(([t, ok]) => h('span', { class: 'step' + (ok ? ' done' : '') }, (ok ? '✓ ' : '') + t)));
@@ -685,16 +746,7 @@ function buildToolbar() {
 
 /* ---------- คอลัมน์ & ตาราง ---------- */
 function columns() {
-  const cols = [
-    { k: '#', label: '#' },
-    { k: 'process_step', label: 'Process step', text: true },
-    isAP() ? { k: 'work_element', label: 'Work element (4M)', text: true } : null,
-    { k: 'function_desc', label: 'Function / Requirement', text: true },
-    { k: 'failure_mode', label: 'Failure Mode', text: true },
-    { k: 'effect', label: 'Effect', text: true },
-    { k: 'severity', label: 'S', sod: 'S' },
-    { k: 'cause', label: 'Cause', text: true },
-    { k: 'occurrence', label: 'O', sod: 'O' },
+  const tail = [
     { k: 'prevention_control', label: 'Prevention Control', text: true },
     { k: 'detection_control', label: 'Detection Control', text: true },
     { k: 'detection', label: 'D', sod: 'D' },
@@ -706,7 +758,43 @@ function columns() {
     { k: 'status', label: 'Review', opts: STATUS_LABEL },
     { k: 'tools', label: '', cls: 'noprint-col' }
   ];
-  return cols.filter(Boolean);
+  let head;
+  if (isAP()) {
+    // ฟอร์ม DC4-2-026: Step 2 โครงสร้าง → Step 3 หน้าที่ → Step 4 FE / S / FM / FC → Step 5
+    head = [
+      { k: '#', label: '#' },
+      { k: 'issue_rev', label: 'Issue/Rev.', text: true, narrow: true },
+      { k: 'change_history', label: 'History / Change Authorization', text: true },
+      { k: 'process_item', label: '2.1 Process Item', text: true },
+      { k: 'step_no', label: 'Station No.', text: true, narrow: true },
+      { k: 'process_step', label: '2.2 Process Step', text: true },
+      { k: 'work_element', label: '2.3 Work Element (4M)', text: true },
+      { k: 'function_item', label: '3.1 Function of Process Item', text: true },
+      { k: 'function_desc', label: '3.2 Function of Process Step', text: true },
+      { k: 'function_element', label: '3.3 Function of Work Element', text: true },
+      { k: 'effect_company', label: '4.1 FE — บริษัท', text: true },
+      { k: 'effect_customer', label: '4.1 FE — ลูกค้า', text: true },
+      { k: 'severity', label: 'S', sod: 'S' },
+      { k: 'failure_mode', label: '4.2 Failure Mode (FM)', text: true },
+      { k: 'cause_ref', label: 'FC ref.', derived: true },
+      { k: 'cause', label: '4.3 Failure Cause (FC)', text: true },
+      { k: 'occurrence', label: 'O', sod: 'O' }
+    ];
+  } else {
+    // ฟอร์มเก่า DC4-4-052
+    head = [
+      { k: '#', label: '#' },
+      { k: 'step_no', label: 'Proc. No.', text: true, narrow: true },
+      { k: 'process_step', label: 'Process step', text: true },
+      { k: 'function_desc', label: 'Process Function / Requirement', text: true },
+      { k: 'failure_mode', label: 'Potential Failure Mode', text: true },
+      { k: 'effect', label: 'Potential Effects of Failure', text: true },
+      { k: 'severity', label: 'SEV', sod: 'S' },
+      { k: 'cause', label: 'Potential Causes of Failure', text: true },
+      { k: 'occurrence', label: 'OCC', sod: 'O' }
+    ];
+  }
+  return [...head, ...tail];
 }
 function autoGrow(ta) { ta.style.height = 'auto'; ta.style.height = Math.max(40, ta.scrollHeight + 2) + 'px'; }
 
@@ -728,6 +816,7 @@ function buildRow(item, all, cols, ro, canReorder) {
   const tr = h('tr', { 'data-id': item.id, class: 'row-' + riskLevel(item) });
   cols.forEach((c) => {
     if (c.k === '#') tr.append(h('td', { class: 'num' }, String(all.indexOf(item) + 1)));
+    else if (c.derived) tr.append(h('td', { class: 'num ref' }, causeRef(item, all)));
     else if (c.text) tr.append(textCell(item, c, ro));
     else if (c.sod) tr.append(sodCell(item, c, ro));
     else if (c.k === 'risk') tr.append(riskCell(item));
@@ -746,7 +835,7 @@ function textCell(item, c, ro) {
     ta.addEventListener('input', () => { autoGrow(ta); pv.textContent = ta.value; });
     ta.addEventListener('change', () => saveField(item, c.k, ta.value.trim()));
   }
-  return h('td', null, ta, pv);
+  return h('td', { class: c.narrow ? 'narrow' : null }, ta, pv);
 }
 function sodCell(item, c, ro) {
   const cur = item[c.k] == null ? '' : String(item[c.k]);
@@ -820,7 +909,7 @@ async function saveField(item, k, v) {
   try {
     const row = unwrap(await db.from('fmea_items').update({ [k]: v }).eq('id', item.id).select().single());
     Object.assign(item, row);
-    refreshRow(item);
+    if (k === 'step_no') renderTable(); else refreshRow(item);
   } catch (e) {
     item[k] = prev;
     toast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
@@ -891,6 +980,7 @@ function aiModal(mode) {
   if (S.busy) return toast('AI กำลังทำงานอยู่ กรุณารอสักครู่', 'error');
   const L = S.lastAi;
   const lastStep = S.items.length ? S.items[S.items.length - 1].process_step : '';
+  const sn = h('input', { type: 'text', maxlength: 50, value: L.step_no || '', placeholder: 'เช่น 5 (ใช้ทำเลขอ้างอิง Cause 5.1, 5.2)' });
   const ps = h('input', { type: 'text', maxlength: 500, value: L.process_step || lastStep, placeholder: 'เช่น Spot Welding – Side Panel' });
   const fn = h('input', { type: 'text', maxlength: 1000, value: L.function_desc, placeholder: 'เช่น เชื่อมจุดตามตำแหน่งและจำนวนจุดที่กำหนด' });
   const rq = h('textarea', { rows: 2, maxlength: 2000, placeholder: 'เช่น Nugget diameter ≥ spec, ไม่มีจุดตก' }); rq.value = L.requirement;
@@ -903,22 +993,22 @@ function aiModal(mode) {
   const go = h('button', { class: 'btn primary' }, mode === 'suggest_more' ? '💡 แนะนำเพิ่ม' : '✨ Generate');
   go.addEventListener('click', async () => {
     const payload = {
-      document_id: S.doc.id, mode, process_step: ps.value.trim(), function_desc: fn.value.trim(),
+      document_id: S.doc.id, mode, step_no: sn.value.trim(), process_step: ps.value.trim(), function_desc: fn.value.trim(),
       requirement: rq.value.trim(), context: cx.value.trim(),
       count: Math.min(10, Math.max(1, parseInt(cnt.value, 10) || 5)), language: lang.value
     };
     if (!payload.process_step) { err.textContent = 'กรุณาระบุ Process step'; err.hidden = false; return; }
-    S.lastAi = { process_step: payload.process_step, function_desc: payload.function_desc, requirement: payload.requirement, context: payload.context, count: payload.count, language: payload.language };
+    S.lastAi = { step_no: payload.step_no, process_step: payload.process_step, function_desc: payload.function_desc, requirement: payload.requirement, context: payload.context, count: payload.count, language: payload.language };
     err.hidden = true; go.disabled = true; S.busy = true;
     go.textContent = '⏳ AI กำลังทำงาน… (20–60 วินาที)';
     try {
       const res = await callAI(payload);
       const max = S.items.reduce((mx, i) => Math.max(mx, i.sort_order || 0), 0);
       const rows = res.items.map((it, i) => {
-        const r = { document_id: S.doc.id, source: 'ai', status: 'draft', sort_order: max + i + 1 };
+        const r = { document_id: S.doc.id, source: 'ai', status: 'draft', sort_order: max + i + 1,
+          step_no: payload.step_no, process_item: isAP() ? (S.project.process_name || '') : '' };
         AI_FIELDS.forEach((k) => { r[k] = it[k] === undefined ? null : it[k]; });
-        ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause', 'prevention_control', 'detection_control', 'recommended_action']
-          .forEach((k) => { r[k] = r[k] == null ? '' : String(r[k]); });
+        AI_TEXT_FIELDS.forEach((k) => { r[k] = r[k] == null ? '' : String(r[k]); });
         return r;
       });
       unwrap(await db.from('fmea_items').insert(rows));
@@ -931,7 +1021,7 @@ function aiModal(mode) {
   m = openModal(mode === 'suggest_more' ? '💡 ให้ AI แนะนำ Failure Mode เพิ่ม' : '✨ Generate FMEA ด้วย AI',
     h('div', null,
       h('div', { class: 'banner info' }, `ใช้เกณฑ์ของ: ${S.standard.name} — ผลจาก AI เป็น Draft เสมอ ต้อง Review / Approve ทีละแถว`),
-      field('Process step / Item *', ps), field('Function', fn), field('Requirement', rq), field('ข้อมูลเพิ่มเติม', cx),
+      field('Station No. (เลข Process Step)', sn), field('Process step / Item *', ps), field('Function', fn), field('Requirement', rq), field('ข้อมูลเพิ่มเติม', cx),
       h('div', { class: 'two-col' }, field('จำนวนแถวที่ต้องการ (1–10)', cnt), field('ภาษาผลลัพธ์', lang)), err,
       h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ปิด'), go)));
 }
@@ -944,12 +1034,12 @@ async function regenRow(item) {
   try {
     const res = await callAI({
       document_id: S.doc.id, mode: 'regenerate_row', language: S.lastAi.language,
-      row: { process_step: item.process_step, function_desc: item.function_desc, failure_mode: item.failure_mode, effect: item.effect, cause: item.cause }
+      row: { process_step: item.process_step, function_desc: item.function_desc, failure_mode: item.failure_mode, effect: item.effect,
+        effect_company: item.effect_company, effect_customer: item.effect_customer, cause: item.cause }
     });
     const r = res.items[0], patch = { source: 'ai', status: 'draft' };
     AI_FIELDS.forEach((k) => { patch[k] = r[k] === undefined ? null : r[k]; });
-    ['process_step', 'work_element', 'function_desc', 'failure_mode', 'effect', 'cause', 'prevention_control', 'detection_control', 'recommended_action']
-      .forEach((k) => { patch[k] = patch[k] == null ? '' : String(patch[k]); });
+    AI_TEXT_FIELDS.forEach((k) => { patch[k] = patch[k] == null ? '' : String(patch[k]); });
     Object.assign(item, unwrap(await db.from('fmea_items').update(patch).eq('id', item.id).select().single()));
     renderTable(); toast('AI ร่างแถวใหม่แล้ว (Draft)', 'ok');
   } catch (e) { toast(e.message, 'error'); if (tr) tr.classList.remove('busy'); }
@@ -1021,7 +1111,7 @@ function buildRevisions() {
     if (selA.value === selB.value) { out.replaceChildren(h('div', { class: 'muted' }, 'กรุณาเลือก 2 ตัวที่ต่างกัน')); return; }
     go.disabled = true;
     try {
-      const get = async (v) => v === 'working' ? S.items : unwrap(await db.from('fmea_revisions').select('snapshot').eq('id', v).single()).snapshot;
+      const get = async (v) => v === 'working' ? S.items : normSnap(unwrap(await db.from('fmea_revisions').select('snapshot').eq('id', v).single()).snapshot);
       const lab = (v) => v === 'working' ? 'Working draft' : S.revisions.find((r) => r.id === v).rev_label;
       const [a, b] = await Promise.all([get(selA.value), get(selB.value)]);
       renderDiff(out, a, b, lab(selA.value), lab(selB.value));
@@ -1082,7 +1172,7 @@ function saveRevisionModal() {
 async function viewRevision(r) {
   try {
     const full = unwrap(await db.from('fmea_revisions').select('*').eq('id', r.id).single());
-    S.viewRev = full; S.viewItems = Array.isArray(full.snapshot) ? full.snapshot : [];
+    S.viewRev = full; S.viewItems = normSnap(full.snapshot);
     S.tab = 'table'; renderDoc();
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -1118,13 +1208,33 @@ function critModal() {
     h('div', { class: 'crit' }, block('S', 'Severity'), block('O', 'Occurrence'), block('D', 'Detection')),
     h('p', { class: 'hint' }, 'ข้อความเป็นการสรุปแนวคิด ไม่ใช่ตารางต้นฉบับ — ใช้ handbook ฉบับจริงเป็นหลักในงาน audit')), { wide: true });
 }
+function headerModal() {
+  const d = S.doc, hd = d.header || {}, fi = formInfo();
+  const defs = HEADER_FIELDS[isAP() ? 'AP' : 'RPN'];
+  const inputs = {};
+  defs.forEach(([k, , type]) => { inputs[k] = h('input', { type: type === 'date' ? 'date' : 'text', maxlength: 200, value: hd[k] || '' }); });
+  const err = h('div', { class: 'error', hidden: true });
+  let m;
+  const go = h('button', { class: 'btn primary' }, 'บันทึก');
+  go.addEventListener('click', async () => {
+    const header = { ...hd };
+    defs.forEach(([k]) => { header[k] = inputs[k].value.trim(); });
+    go.disabled = true;
+    try { Object.assign(S.doc, unwrap(await db.from('fmea_documents').update({ header }).eq('id', d.id).select().single())); m.close(); renderDoc(); }
+    catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
+  });
+  m = openModal('🧾 หัวเอกสาร — ' + fi.doc_no, h('div', null,
+    h('p', { class: 'hint' }, `Doc. No.: ${fi.doc_no} • Issued Form: ${fi.issued} • Rev. No.: ${d.current_rev} (ระบบกำหนดเมื่อ Save revision) • Part No.: ${S.project.part_no || '-'} (แก้ที่หน้า Project)`),
+    h('div', { class: 'two-col' }, defs.map(([k, label]) => field(label, inputs[k]))),
+    h('p', { class: 'hint' }, 'หัวเอกสารจะถูกเก็บลงทุก revision (ดู Rev เก่าเห็นหัวเอกสารของ Rev นั้น) และ Restore แล้วหัวเอกสารกลับตามไปด้วย'),
+    err, h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), go)));
+}
 function settingsModal() {
   const d = S.doc;
   const title = h('input', { type: 'text', maxlength: 200, value: d.title });
   const thr = h('input', { type: 'number', min: 1, max: 1000, value: String(d.rpn_threshold) });
   const pl = d.planning || {};
   const pf = {
-    customer: h('input', { type: 'text', maxlength: 200, value: pl.customer || '' }),
     scope: h('textarea', { rows: 2, maxlength: 1000 }), timing: h('input', { type: 'text', maxlength: 300, value: pl.timing || '' }),
     basis: h('textarea', { rows: 2, maxlength: 1000 })
   };
@@ -1136,7 +1246,7 @@ function settingsModal() {
     if (!title.value.trim()) { err.textContent = 'กรุณาระบุชื่อเอกสาร'; err.hidden = false; return; }
     const patch = { title: title.value.trim() };
     if (!isAP()) patch.rpn_threshold = Math.min(1000, Math.max(1, parseInt(thr.value, 10) || 100));
-    else patch.planning = { customer: pf.customer.value.trim(), scope: pf.scope.value.trim(), timing: pf.timing.value.trim(), basis: pf.basis.value.trim() };
+    else patch.planning = { ...(d.planning || {}), scope: pf.scope.value.trim(), timing: pf.timing.value.trim(), basis: pf.basis.value.trim() };
     go.disabled = true;
     try { Object.assign(S.doc, unwrap(await db.from('fmea_documents').update(patch).eq('id', d.id).select().single())); m.close(); renderDoc(); }
     catch (e) { err.textContent = e.message; err.hidden = false; go.disabled = false; }
@@ -1144,7 +1254,7 @@ function settingsModal() {
   m = openModal('ตั้งค่าเอกสาร', h('div', null, field('ชื่อเอกสาร', title),
     h('p', { class: 'hint' }, 'เวอร์ชั่นมาตรฐาน: ' + S.standard.name + ' (เปลี่ยนไม่ได้)'),
     isAP()
-      ? h('div', null, h('h4', null, 'Step 1 — Planning & Preparation'), field('ลูกค้า / Customer', pf.customer),
+      ? h('div', null, h('h4', null, 'Step 1 — Planning & Preparation'), h('p', { class: 'hint' }, 'Customer, ECN, Rank ฯลฯ อยู่ที่ปุ่ม "🧾 หัวเอกสาร"'),
         field('ขอบเขต (Scope: รวม/ไม่รวม)', pf.scope), field('Timing / Milestone', pf.timing), field('ฐานข้อมูลที่ใช้ (Flow chart, Control plan, Lessons learned)', pf.basis))
       : field('RPN threshold (RPN ≥ ค่านี้ = ความเสี่ยงสูง, ≥ ครึ่งหนึ่ง = กลาง)', thr),
     err, h('div', { class: 'modal-foot' }, h('button', { class: 'btn', onclick: () => m.close() }, 'ยกเลิก'), go)));
@@ -1154,17 +1264,20 @@ function exportExcel() {
   const p = S.project, d = S.doc, rev = roMode() ? S.viewRev.rev_label : d.current_rev;
   const cols = columns().filter((c) => c.k !== '#' && c.k !== 'tools');
   const items = curItems();
-  const head = [['FMEA Type', p.fmea_type], ['Project', p.name], ['Part no.', p.part_no || ''], ['Process', p.process_name || ''],
-    ['Responsible', p.responsible || ''], ['Team', p.team || ''], ['Standard', S.standard.name], ['Revision', rev],
+  const hd = headerOf(), fi = formInfo();
+  const head = [['Doc. No.', fi.doc_no], ['Issued Form', fi.issued], ['FMEA Type', p.fmea_type], ['Project', p.name], ['Part no.', p.part_no || ''],
+    ...HEADER_FIELDS[isAP() ? 'AP' : 'RPN'].map(([k, label]) => [label, hd[k] || '']),
+    ['Process', p.process_name || ''], ['Responsible', p.responsible || ''], ['Team', p.team || ''], ['Standard', S.standard.name], ['Revision', rev],
     ['Exported', new Date().toLocaleString('th-TH')], []];
   const header = ['No.', ...cols.map((c) => c.label)];
   const rows = items.map((it, i) => [i + 1, ...cols.map((c) => {
+    if (c.k === 'cause_ref') return causeRef(it, items);
     if (c.k === 'risk') return isAP() ? (it.ap || '') : (it.rpn == null ? '' : it.rpn);
     if (c.opts) return c.opts[it[c.k]] || '';
     return it[c.k] == null ? '' : it[c.k];
   })]);
   const ws = XLSX.utils.aoa_to_sheet([...head, header, ...rows]);
-  ws['!cols'] = header.map((t) => ({ wch: ['No.', 'S', 'O', 'D', 'AP', 'RPN'].includes(t) ? 7 : 28 }));
+  ws['!cols'] = header.map((t) => ({ wch: ['No.', 'S', 'O', 'D', 'AP', 'RPN', 'SEV', 'OCC', 'FC ref.', 'Station No.', 'Proc. No.', 'Issue/Rev.'].includes(t) ? 7 : 28 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'FMEA');
   const safe = (s) => String(s).replace(/[^\w\-.ก-๙]+/g, '_');
